@@ -1,0 +1,9 @@
+<div>
+    <h2><%= @article.subject %></h2>
+    <div>
+        <%= @article.from %> - <%= format_date(@article.date) %>
+    </div>
+    <div>
+        <%= @article.body %>
+    </div>
+</div>

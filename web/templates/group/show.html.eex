@@ -1,0 +1,39 @@
+<h2><%= @group.name %></h2>
+
+<%= form_for @article_changeset, group_path(@conn, :create_topic, @group.name), fn form -> %>
+<fieldset>
+    <legend>Post an article</legend>
+
+    <div class="input-field">
+        <%= label(form, :from, "Name") %>
+        <%= text_input(form, :from, class: error_class(@article_changeset, :name)) %>
+    </div>
+
+    <div class="input-field">
+        <%= label(form, :subject, "Subject") %>
+        <%= text_input(form, :subject, class: error_class(@article_changeset, :name)) %>
+    </div>
+
+    <%= textarea(form, :body) %>
+
+    <div class="input-group">
+        <button type="submit">Post article</button>
+    </div>
+
+</fieldset>
+<% end %>
+
+<%= if Enum.empty? @group.articles do %>
+    <p>No articles</p>
+<% end %>
+
+<ul>
+    <%= for article <- @group.articles do %>
+        <li>
+            <a href="<%= article_path(@conn, :show, @group.name, article.id) %>">
+                <%= article.subject %>
+            </a>
+            &nbsp;<%= article.inserted_at |> format_date %>
+        </li>
+    <% end %>
+</ul>

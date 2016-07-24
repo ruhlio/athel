@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="description" content="">
+        <meta name="author" content="">
+
+        <title>Athel</title>
+        <link rel="stylesheet" href="<%= static_path(@conn, "/css/app.css") %>">
+    </head>
+
+    <body>
+        <header>
+            <a class="title" href="/">Athel</a>
+            <ul>
+                <li><a href="<%= group_path(@conn, :index) %>">Groups</a></li>
+                <li><a href="#">About</a></li>
+            </ul>
+        </header>
+
+        <main>
+            <%= for flash_type <- [:info, :success, :warning, :error] do %>
+                <% flash = get_flash(@conn, flash_type) %>
+                <%= if flash do %>
+                    <div class="flash flash-<%= flash_type %>">
+                        <%= flash %>
+                    </div>
+                <% end %>
+            <% end %>
+
+            <%= render @view_module, @view_template, assigns %>
+        </main>
+    </body>
+</html>

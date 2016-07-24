@@ -1,0 +1,39 @@
+<h2>Groups</h2>
+
+<%= if Enum.empty? @groups do %>
+    <p>No groups</p>
+<% else  %>
+    <table class="groups-table">
+        <tr>
+            <th>Name</th>
+            <th>Low Watermark</th>
+            <th>High Watermark</th>
+            <th>Status</th>
+        </tr>
+        <%= for group <- @groups do %>
+            <tr>
+                <td>
+                    <a href="<%= group_path(@conn, :show, group.name) %>">
+                        <%= group.name %>
+                    </a>
+                </td>
+                <td>
+                    <%= group.low_watermark %>
+                </td>
+                <td>
+                    <%= group.high_watermark %>
+                </td>
+                <td>
+                    <%= case group.status do %>
+                        <% "y" -> %>
+                        Posting permitted
+                        <% "n" -> %>
+                        Posting not permitted
+                        <% "m" -> %>
+                        Posting moderated
+                    <% end %>
+                </td>
+            </tr>
+        <% end %>
+    </table>
+<% end %>

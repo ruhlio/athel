@@ -1,0 +1,19 @@
+<%= form_for @changeset, admin_path(@conn, :create_group), [class: "pure-form pure-form-aligned"], fn form -> %>
+<fieldset>
+    <legend>Create a group</legend>
+
+    <div class="pure-control-group">
+        <%= label(form, :name, "Name") %>
+        <%= text_input(form, :name, class: error_class(@changeset, :name)) %>
+    </div>
+
+    <div class="pure-control-group">
+        <%= label(form, :status, "Status") %>
+        <%= select(form, :status, ["Posting allowed": "y", "Posting disallowed": "n", "Posting moderated": "m"], class: error_class(@changeset, :status)) %>
+    </div>
+
+    <div class="pure-controls">
+        <button type="submit" class="pure-button pure-button-primary">Create group</button>
+    </div>
+</fieldset>
+<% end %>
