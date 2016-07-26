@@ -45,7 +45,7 @@ defmodule Athel.Nntp.Parser do
     line(input, [])
   end
 
-  defp line(<<return, newline, rest :: binary>>, acc) when return == ?\r and newline == ?\n do
+  defp line(<<"\r\n", rest :: binary>>, acc)  do
     {IO.iodata_to_binary(acc), rest}
   end
 
