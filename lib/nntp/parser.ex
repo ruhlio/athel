@@ -9,6 +9,14 @@ defmodule Athel.Nntp.Parser do
     {:invalid, type} -> {:error, type}
   end
 
+  @spec parse_multiline(iodata) :: {:ok, list(String.t), iodata} | {:error, atom}
+  def parse_multiline(input) do
+    {lines, rest} = multiline(input, [])
+    {:ok, lines, rest}
+  catch
+    {:invalid, type} -> {:error, type}
+  end
+
   @digits '0123456789'
 
   defp code(input) do
@@ -55,6 +63,29 @@ defmodule Athel.Nntp.Parser do
 
   defp line(_, _) do
     syntax_error(:line)
+  end
+
+  defp multiline(<<".\r\n", rest :: binary>>, acc) do
+    {Enum.reverse(acc), rest}
+  end
+
+  defp multiline("", _) do
+    syntax_error(:multiline)
+  end
+
+  defp multiline(<<"..", rest :: binary>>, acc) do
+    # i believe binary concats are slower, but how often does escaping really happen?
+    {line, rest} = line("." <> rest)
+    multiline(rest, [line | acc])
+  end
+
+  defp multiline(<<".", next, _ :: binary>>, _) when next != "\r" and next != "." do
+    syntax_error(:multiline)
+  end
+
+  defp multiline(input, acc) do
+    {line, rest} = line(input)
+    multiline(rest,  [line | acc])
   end
 
   defp syntax_error(type) do
