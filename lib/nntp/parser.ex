@@ -1,20 +1,30 @@
 defmodule Athel.Nntp.Parser do
 
-  @spec parse_code_line(iodata) :: {:ok, {integer, String.t}, iodata} | {:error, atom}
+  @type parse_result(parsed) :: {:ok, parsed, iodata} | {:error, atom}
+
+  @spec parse_code_line(iodata) :: parse_result({integer, String.t})
   def parse_code_line(input) do
     {code, rest} = code(input)
     {line, rest} = line(skip_whitespace(rest))
     {:ok, {code, line}, rest}
   catch
-    {:invalid, type} -> {:error, type}
+    e -> e
   end
 
-  @spec parse_multiline(iodata) :: {:ok, list(String.t), iodata} | {:error, atom}
+  @spec parse_multiline(iodata) :: parse_result(list(String.t))
   def parse_multiline(input) do
     {lines, rest} = multiline(input, [])
     {:ok, lines, rest}
   catch
-    {:invalid, type} -> {:error, type}
+    e -> e
+  end
+
+  @spec parse_headers(iodata) :: parse_result(%{optional(String.t) => String.t})
+  def parse_headers(input) do
+    {headers, rest} = headers(input, %{})
+    {:ok, headers, rest}
+  catch
+    e -> e
   end
 
   @digits '0123456789'
@@ -53,7 +63,9 @@ defmodule Athel.Nntp.Parser do
     line(input, [])
   end
 
-  defp line(<<"\r\n", rest :: binary>>, acc)  do
+  @newline "\r\n"
+
+  defp line(<<@newline, rest :: binary>>, acc)  do
     {IO.iodata_to_binary(acc), rest}
   end
 
@@ -65,7 +77,7 @@ defmodule Athel.Nntp.Parser do
     syntax_error(:line)
   end
 
-  defp multiline(<<".\r\n", rest :: binary>>, acc) do
+  defp multiline(<<".#{@newline}", rest :: binary>>, acc) do
     {Enum.reverse(acc), rest}
   end
 
@@ -88,8 +100,36 @@ defmodule Athel.Nntp.Parser do
     multiline(rest,  [line | acc])
   end
 
+  defp headers(<<@newline, rest :: binary>>, acc) do
+    {acc, rest}
+  end
+
+  defp headers("", _) do
+    syntax_error(:headers)
+  end
+
+  defp headers(input, acc) do
+    {name, rest} = header_name(input, [])
+    {value, rest} = line(skip_whitespace(rest))
+    headers(rest, Map.put(acc, name, value))
+  end
+
+  defp header_name(<<":", rest :: binary>>, acc) do
+    {IO.iodata_to_binary(acc), rest}
+  end
+
+  defp header_name(<<next, rest :: binary>>, acc) do
+    #todo: `not in` guard?
+    if next in @whitespace, do: syntax_error(:header_name)
+    header_name(rest, [acc, next])
+  end
+
+  defp header_name("", _) do
+    syntax_error(:header_name)
+  end
+
   defp syntax_error(type) do
-    throw {:invalid, type}
+    throw {:error, type}
   end
 
 end
