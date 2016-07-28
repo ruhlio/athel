@@ -3,22 +3,20 @@ defmodule Athel.Repo.Migrations.CreateGroup do
 
   def up do
     execute "create type group_status as enum ('y', 'n', 'm')"
-  end
 
-  def down do
-    execute "drop type group_status"
-  end
-
-  def change do
     create table(:groups) do
       add :name, :string, size: 128, null: false
       add :low_watermark, :integer, null: false
       add :high_watermark, :integer, null: false
-      add :status, :group_status, size: 1, null: false
+      add :status, :group_status, null: false
 
       timestamps()
     end
+  end
 
+  def down do
+    drop table(:groups)
+    execute "drop type group_status"
   end
 
 end
