@@ -1,6 +1,6 @@
 defmodule Athel.Nntp.Parser do
 
-  @type parse_result(parsed) :: {:ok, parsed, iodata} | {:error, atom}
+  @type parse_result(parsed) :: {:ok, parsed, iodata} | {:error, atom} | :need_more
 
   @spec parse_code_line(iodata) :: parse_result({integer, String.t})
   def parse_code_line(input) do
@@ -37,6 +37,10 @@ defmodule Athel.Nntp.Parser do
     code(rest, {[acc, digit], count + 1})
   end
 
+  defp code("", {acc, count}) when count < 3 do
+    need_more()
+  end
+
   defp code(next, state) do
     end_code(state, next)
   end
@@ -63,26 +67,36 @@ defmodule Athel.Nntp.Parser do
     line(input, [])
   end
 
-  @newline "\r\n"
-
-  defp line(<<@newline, rest :: binary>>, acc)  do
+  defp line(<<"\r\n", rest :: binary>>, acc)  do
     {IO.iodata_to_binary(acc), rest}
+  end
+
+  defp line(<<?\r, next>>, _) when next != ?\n do
+    syntax_error(:line)
+  end
+
+  defp line(<<?\n, _ :: binary>>, _) do
+    syntax_error(:line)
   end
 
   defp line(<<char, rest :: binary>>, acc) do
     line(rest, [acc, char])
   end
 
+  defp line("", _) do
+    need_more()
+  end
+
   defp line(_, _) do
     syntax_error(:line)
   end
 
-  defp multiline(<<".#{@newline}", rest :: binary>>, acc) do
+  defp multiline(<<".\r\n", rest :: binary>>, acc) do
     {Enum.reverse(acc), rest}
   end
 
   defp multiline("", _) do
-    syntax_error(:multiline)
+    need_more()
   end
 
   defp multiline(<<"..", rest :: binary>>, acc) do
@@ -100,12 +114,12 @@ defmodule Athel.Nntp.Parser do
     multiline(rest,  [line | acc])
   end
 
-  defp headers(<<@newline, rest :: binary>>, acc) do
+  defp headers(<<"\r\n", rest :: binary>>, acc) do
     {acc, rest}
   end
 
   defp headers("", _) do
-    syntax_error(:headers)
+    need_more()
   end
 
   defp headers(input, acc) do
@@ -120,12 +134,16 @@ defmodule Athel.Nntp.Parser do
 
   defp header_name(<<next, rest :: binary>>, acc) do
     #todo: `not in` guard?
-    if next in @whitespace, do: syntax_error(:header_name)
+    if (next in @whitespace or next in '\r\n'), do: syntax_error(:header_name)
     header_name(rest, [acc, next])
   end
 
   defp header_name("", _) do
-    syntax_error(:header_name)
+    need_more()
+  end
+
+  defp need_more() do
+    throw :need_more
   end
 
   defp syntax_error(type) do

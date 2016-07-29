@@ -7,12 +7,13 @@ defmodule Athel.Nntp.ParserTest do
     assert parse_code_line("203 all clear\r\n") == {:ok, {203, "all clear"}, ""}
   end
 
-  test "code line missing newline" do
-    assert parse_code_line("301 I smell bananas") == {:error, :line}
+  test "incomplete newline" do
+    assert parse_code_line("391 HEYO\r") == :need_more
   end
 
-  test "newline missing \\n" do
-    assert parse_code_line("391 HEYO\r") == {:error, :line}
+  test "invalid newline" do
+    assert parse_code_line("404 SMELL YA LATER\r\a") == {:error, :line}
+    assert parse_code_line("404 SMELL YA LATER\n") == {:error, :line}
   end
 
   test "code too short" do
@@ -21,6 +22,14 @@ defmodule Athel.Nntp.ParserTest do
 
   test "code too long" do
     assert parse_code_line("3124 GIRAFFE NECK") == {:error, :code}
+  end
+
+  test "truncated code" do
+    assert parse_code_line("12") == :need_more
+  end
+
+  test "truncated line" do
+    assert parse_code_line("123 i could just") == :need_more
   end
 
   test "non-numerical code" do
@@ -43,7 +52,7 @@ defmodule Athel.Nntp.ParserTest do
 
   test "unterminated multiline" do
     multiline = parse_multiline("I SMELL LONDON\r\nI SMELL FRANCE\r\nI SMELL AN UNTERMINATED MULTILINE\r\n")
-    assert multiline == {:error, :multiline}
+    assert multiline == :need_more
   end
 
   test "valid headers" do
@@ -56,15 +65,19 @@ defmodule Athel.Nntp.ParserTest do
   end
 
   test "unterminated headers" do
-    assert parse_headers("this-train: is off the tracks\r\n") == {:error, :headers}
+    assert parse_headers("this-train: is off the tracks\r\n") == :need_more
   end
 
-  test "unterminated header name" do
+  test "newline terminated header name" do
     assert parse_headers("i-just-cant-seem-to-ever-shut-my-piehole\r\n") == {:error, :header_name}
   end
 
+  test "unterminated header name" do
+    assert parse_headers("just-must-fuss") == :need_more
+  end
+
   test "unterminated header value" do
-    assert parse_headers("welcome: to the danger zone") == {:error, :line}
+    assert parse_headers("welcome: to the danger zone") == :need_more
   end
 
 end

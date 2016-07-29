@@ -6,14 +6,10 @@ defmodule Athel do
   def start(_type, _args) do
     import Supervisor.Spec
 
-    # Define workers and child supervisors to be supervised
     children = [
-      # Start the Ecto repository
       supervisor(Athel.Repo, []),
-      # Start the endpoint when the application starts
       supervisor(Athel.Endpoint, []),
-      # Start your own worker by calling: Athel.Worker.start_link(arg1, arg2, arg3)
-      # worker(Athel.Worker, [arg1, arg2, arg3]),
+      #supervisor(Athel.Nntp.Server, [])
     ]
 
     # See http://elixir-lang.org/docs/stable/elixir/Supervisor.html
