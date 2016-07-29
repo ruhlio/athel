@@ -80,4 +80,34 @@ defmodule Athel.Nntp.ParserTest do
     assert parse_headers("welcome: to the danger zone") == :need_more
   end
 
+  test "valid command with arguments" do
+    command = parse_command("ADULT supervision is required\r\nsomething")
+    assert command = {:ok, {"ADULT", ~w(supervision is required)}, "something"}
+  end
+
+  test "valid command without arguments" do
+    command = parse_command("WUT\r\n")
+    assert command = {:ok, {"WUT", []}, ""}
+  end
+
+  test "no command" do
+    command = parse_command("\r\n")
+    assert command = {:error, :command}
+  end
+
+  test "incomplete newline in command" do
+    command = parse_command("HAL\nP MY NEW\rLINES\r\n")
+    assert command = {:ok, {"HAL\nP", ["MY", "NEW\rLINES"]}, ""}
+  end
+
+  test "unterminated command" do
+    command = parse_command("MARKET FRESH HORSEMEAT")
+    assert command = :need_more
+  end
+
+  test "unterminated command without arguments" do
+    command = parse_command("ants")
+    assert command = :need_more
+  end
+
 end

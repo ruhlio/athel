@@ -27,6 +27,14 @@ defmodule Athel.Nntp.Parser do
     e -> e
   end
 
+  @spec parse_command(iodata) :: parse_result({String.t, list(String.t)})
+  def parse_command(input) do
+    {name, arguments, rest} = command(input)
+    {:ok, {name, arguments}, rest}
+  catch
+    e -> e
+  end
+
   @digits '0123456789'
 
   defp code(input) do
@@ -37,7 +45,7 @@ defmodule Athel.Nntp.Parser do
     code(rest, {[acc, digit], count + 1})
   end
 
-  defp code("", {acc, count}) when count < 3 do
+  defp code("", {_, count}) when count < 3 do
     need_more()
   end
 
@@ -140,6 +148,49 @@ defmodule Athel.Nntp.Parser do
 
   defp header_name("", _) do
     need_more()
+  end
+
+  defp command(input) do
+    command(input, {[], [], []})
+  end
+
+  # end of command
+  defp command(<<"\r\n", rest :: binary>>, {command, arguments, _}) do
+    if Enum.empty? command do
+      syntax_error(:command)
+    else
+      end_command(command, arguments, rest)
+    end
+  end
+
+  # need more
+  defp command("", _) do
+    need_more()
+  end
+
+  # end of command name
+  defp command(<<next, rest :: binary>>, {[], [], acc}) when next in @whitespace do
+    command(rest, {acc, [], []})
+  end
+
+  # reading command name
+  defp command(<<next, rest :: binary>>, {[], [], acc}) do
+    command(rest, {[], [], [acc, next]})
+  end
+
+  # end of argument
+  defp command(<<next, rest :: binary>>, {command, arguments, acc}) when next in @whitespace do
+    command(rest, {command, [acc | arguments], []})
+  end
+
+  # reading argument
+  defp command(<<next, rest :: binary>>, {command, arguments, acc}) do
+    command(rest, {command, arguments, [acc, next]})
+  end
+
+  defp end_command(command, arguments, rest) do
+    arguments = Enum.map(arguments, &IO.iodata_to_binary/1) |> Enum.reverse
+    {IO.iodata_to_binary(command), arguments, rest}
   end
 
   defp need_more() do
