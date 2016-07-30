@@ -9,7 +9,7 @@ defmodule Athel do
     children = [
       supervisor(Athel.Repo, []),
       supervisor(Athel.Endpoint, []),
-      #supervisor(Athel.Nntp.Server, [])
+      supervisor(Athel.Nntp.Server, [])
     ]
 
     # See http://elixir-lang.org/docs/stable/elixir/Supervisor.html

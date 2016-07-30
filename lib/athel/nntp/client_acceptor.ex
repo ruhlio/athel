@@ -17,7 +17,10 @@ defmodule Athel.Nntp.ClientAcceptor do
 
   def accept_connection(socket) do
     {:ok, client_socket} = :gen_tcp.accept(socket)
-    Server.handle_client(client_socket)
+    case Server.handle_client(client_socket) do
+      {:ok, _pid} -> ()
+      {:error, error} -> Logger.error "Failed to start client handler: #{inspect error}"
+    end
     accept_connection(socket)
   end
 
