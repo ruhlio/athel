@@ -29,7 +29,7 @@ defmodule Athel.Nntp.Parser do
 
   @spec parse_command(iodata) :: parse_result({String.t, list(String.t)})
   def parse_command(input) do
-    {name, arguments, rest} = command(input)
+    {name, arguments, rest} = command(IO.iodata_to_binary(input))
     {:ok, {name, arguments}, rest}
   catch
     e -> e
@@ -155,11 +155,15 @@ defmodule Athel.Nntp.Parser do
   end
 
   # end of command
-  defp command(<<"\r\n", rest :: binary>>, {command, arguments, _}) do
+  defp command(<<"\r\n", rest :: binary>>, {command, arguments, acc}) do
     if Enum.empty? command do
-      syntax_error(:command)
+      if Enum.empty? acc do
+        syntax_error(:command)
+      else
+        end_command(acc, arguments, rest)
+      end
     else
-      end_command(command, arguments, rest)
+      end_command(command, [acc | arguments], rest)
     end
   end
 

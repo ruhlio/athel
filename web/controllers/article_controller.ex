@@ -3,7 +3,6 @@ defmodule Athel.ArticleController do
   use Timex
 
   alias Athel.Article
-  alias Athel.Group
 
   def show(conn, %{"id" => id}) do
     article = Repo.get!(Article, id)
