@@ -7,13 +7,17 @@ defmodule Athel.Nntp.ClientHandler do
   alias Athel.Nntp.Parser
   alias Athel.Nntp.Formatter
 
+  defmodule CommunicationError do
+    defexception message: "Error while communicating with client"
+  end
+
   def start_link(socket) do
     GenServer.start_link(__MODULE__, socket)
   end
 
   def init(socket) do
     Logger.info "Welcoming client"
-    send_status(socket, {200, "WELCOME, FRIEND"})
+    send_status(socket, {200, "WELCOME FRIEND"})
     spawn_link(__MODULE__, :recv_command, [self(), socket, []])
     {:ok, socket}
   end
@@ -71,8 +75,10 @@ defmodule Athel.Nntp.ClientHandler do
   end
 
   defp read(socket, buffer) do
-    {:ok, received} = :gen_tcp.recv(socket, 0)
-    [buffer, received]
+    case :gen_tcp.recv(socket, 0) do
+      {:ok, received} -> [buffer, received]
+      {:error, :closed} -> raise CommunicationError, message: "Client terminated connection prematurely"
+    end
   end
 
   defp send_status(socket, {code, message}) do

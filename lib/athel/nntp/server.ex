@@ -1,8 +1,8 @@
 defmodule Athel.Nntp.Server do
   use Supervisor
 
-  def start_link do
-    Supervisor.start_link(__MODULE__, :ok, name: __MODULE__)
+  def start_link(port) do
+    Supervisor.start_link(__MODULE__, port, name: __MODULE__)
   end
 
   @spec handle_client(:gen_tcp.socket) :: Supervisor.on_start_child
@@ -25,9 +25,9 @@ defmodule Athel.Nntp.Server do
     Supervisor.terminate_child(__MODULE__, handler)
   end
 
-  def init(:ok) do
+  def init(port) do
     children = [
-      worker(Athel.Nntp.ClientAcceptor, [8119])
+      worker(Athel.Nntp.ClientAcceptor, [port])
     ]
 
     supervise(children, strategy: :one_for_one)
