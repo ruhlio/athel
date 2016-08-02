@@ -1,6 +1,7 @@
 defmodule Athel.Article do
   use Athel.Web, :model
 
+  @primary_key {:message_id, :binary_id, autogenerate: false}
   schema "articles" do
     field :from, :string
     field :subject, :string
@@ -11,6 +12,7 @@ defmodule Athel.Article do
 
     many_to_many :groups, Athel.Group,
       join_through: "articles_to_groups",
+      join_keys: [article_id: :message_id, group_id: :id],
       on_delete: :delete_all
 
     timestamps()

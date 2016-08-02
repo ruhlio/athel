@@ -5,7 +5,7 @@ defmodule Athel.Nntp.ClientHandler do
   require Athel.Nntp.Defs
   import Athel.Nntp.Defs
   alias Athel.Nntp.Parser
-  alias Athel.Nntp.Formatter
+  alias Athel.Nntp.Format
 
   defmodule CommunicationError do
     defexception message: "Error while communicating with client"
@@ -86,7 +86,7 @@ defmodule Athel.Nntp.ClientHandler do
   end
 
   defp send_status(socket, {code, message, lines}) do
-    multiline = Formatter.format_multiline(lines)
+    multiline = Format.format_multiline(lines)
     :gen_tcp.send(socket, "#{code} #{message}\r\n#{multiline}")
   end
 

@@ -3,6 +3,7 @@ defmodule Athel.Repo.Migrations.CreateArticle do
 
   def change do
     create table(:articles) do
+      add :message_id, :string, primary_key: true
       add :from, :string, null: true
       add :subject, :string, null: false
       add :date, :datetime, null: false
@@ -14,7 +15,7 @@ defmodule Athel.Repo.Migrations.CreateArticle do
     end
 
     create table(:articles_to_groups, primary_key: false) do
-      add :article_id, references(:articles)
+      add :message_id, references(:articles, column: :message_id)
       add :group_id, references(:groups)
     end
 
