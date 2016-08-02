@@ -22,6 +22,11 @@ defmodule Athel.Nntp.Format do
     [headers, body] |> IO.iodata_to_binary
   end
 
+  @spec format_group(Athel.Group.t) :: String.t
+  def format_group(group) do
+    "#{group.name} #{group.high_watermark} #{group.low_watermark} #{group.status}"
+  end
+
   defp format_headers(headers) do
     [Enum.reduce(headers, [], &format_header/2), "\r\n"]
   end
