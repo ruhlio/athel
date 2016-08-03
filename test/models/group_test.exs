@@ -15,4 +15,21 @@ defmodule Athel.GroupTest do
     changeset = Group.changeset(%Group{}, @invalid_attrs)
     refute changeset.valid?
   end
+
+  test "name format" do
+    changeset = Group.changeset(%Group{}, @valid_attrs)
+    assert changeset.valid?
+
+    changeset = Group.changeset(%Group{}, %{@valid_attrs | name: "MR. BRIGGS"})
+    assert changeset.errors[:name] == {"has invalid format", []}
+  end
+
+  test "name uniqueness" do
+    changeset = Group.changeset(%Group{}, @valid_attrs)
+    Repo.insert!(changeset)
+
+    changeset = Group.changeset(%Group{}, @valid_attrs)
+    {:error, changeset} = Repo.insert(changeset)
+    assert changeset.errors[:name] == {"has already been taken", []}
+  end
 end

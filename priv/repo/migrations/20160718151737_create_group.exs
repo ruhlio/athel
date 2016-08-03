@@ -12,6 +12,8 @@ defmodule Athel.Repo.Migrations.CreateGroup do
 
       timestamps()
     end
+
+    create unique_index(:groups, [:name])
   end
 
   def down do

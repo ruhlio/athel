@@ -30,7 +30,7 @@
 <ul>
     <%= for article <- @group.articles do %>
         <li>
-            <a href="<%= article_path(@conn, :show, @group.name, article.id) %>">
+            <a href="<%= article_path(@conn, :show, @group.name, article.message_id) %>">
                 <%= article.subject %>
             </a>
             &nbsp;<%= article.inserted_at |> format_date %>

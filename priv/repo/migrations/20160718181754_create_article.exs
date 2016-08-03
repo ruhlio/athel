@@ -3,7 +3,7 @@ defmodule Athel.Repo.Migrations.CreateArticle do
 
   def change do
     create table(:articles) do
-      add :message_id, :string, primary_key: true
+      add :message_id, :string, primary_key: true, size: 192
       add :from, :string, null: true
       add :subject, :string, null: false
       add :date, :datetime, null: false
@@ -14,8 +14,10 @@ defmodule Athel.Repo.Migrations.CreateArticle do
       timestamps()
     end
 
+    create unique_index(:articles, [:message_id])
+
     create table(:articles_to_groups, primary_key: false) do
-      add :message_id, references(:articles, column: :message_id)
+      add :message_id, references(:articles, column: :message_id, type: :string)
       add :group_id, references(:groups)
     end
 

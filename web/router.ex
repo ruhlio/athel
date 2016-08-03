@@ -23,7 +23,7 @@ defmodule Athel.Router do
       get "/:name", GroupController, :show
       post "/:name", GroupController, :create_topic
 
-      get "/:group_name/articles/:id", ArticleController, :show
+      get "/:group_name/articles/:message_id", ArticleController, :show
     end
 
     scope "/admin" do

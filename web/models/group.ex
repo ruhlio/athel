@@ -9,7 +9,7 @@ defmodule Athel.Group do
 
     many_to_many :articles, Athel.Article,
       join_through: "articles_to_groups",
-      join_keys: [group_id: :id, article_id: :message_id ],
+      join_keys: [group_id: :id, message_id: :message_id],
       on_delete: :delete_all
 
     timestamps()
@@ -22,8 +22,8 @@ defmodule Athel.Group do
     struct
     |> cast(params, [:name, :low_watermark, :high_watermark, :status])
     |> validate_required([:name, :low_watermark, :high_watermark, :status])
-    |> validate_format(:group, ~r/^[a-zA-Z0-9_.-]{1,128}$/)
-    |> unique_constraint(:group)
+    |> validate_format(:name, ~r/^[a-zA-Z0-9_.-]{1,128}$/)
+    |> unique_constraint(:name)
     |> validate_inclusion(:status, ["y", "n", "m"])
   end
 end

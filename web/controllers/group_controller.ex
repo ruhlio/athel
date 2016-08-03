@@ -20,20 +20,18 @@ defmodule Athel.GroupController do
         "article" => %{"from" => from, "subject" => subject, "body" => body}}) do
     group = get_group(name)
     article_changes = %{
-          "from" => from,
-          "subject" => subject,
-          "body" => body,
-          "content_type" => "text/plain",
-          "reference" => nil,
-          "date" => Timex.now}
-    changeset = Article.changeset(%Article{}, article_changes)
-    |> Ecto.Changeset.put_assoc(:groups, [group])
+      "from" => from,
+      "subject" => subject,
+      "body" => body,
+      "content_type" => "text/plain",
+    }
+    changeset = Article.topic_changeset(%Article{}, [group], article_changes)
 
     if changeset.valid? do
       article = Repo.insert!(changeset)
       conn
       |> put_flash(:success, "Article posted")
-      |> redirect(to: article_path(conn, :show, name, article.id))
+      |> redirect(to: article_path(conn, :show, name, article.message_id))
     else
       conn
       |> put_flash(:error, "Please correct the errors and resubmit")
