@@ -2,6 +2,10 @@ defmodule Athel.Nntp.ClientHandler do
   use GenServer
 
   require Logger
+  import Ecto.Query
+
+  alias Athel.Repo
+  alias Athel.Group
   require Athel.Nntp.Defs
   import Athel.Nntp.Defs
   alias Athel.Nntp.Parser
@@ -30,13 +34,55 @@ defmodule Athel.Nntp.ClientHandler do
 
   check_argument_count("CAPABILITIES", 0)
   def handle_call({"CAPABILITIES", _}, _from, state) do
-    capabilities = ["VERSION 2", "POST"]
+    capabilities = ["VERSION 2", "POST", "LIST ACTIVE NEWGROUPS"]
     respond(:continue, {101, "Listing capabilities", capabilities})
   end
 
   check_argument_count("QUIT", 0)
   def handle_call({"QUIT", _}, _from, state) do
     respond(:quit, {205, "SEE YA"})
+  end
+
+  #TODO: LIST ACTIVE with wildmat
+  check_argument_count("LIST", 2)
+
+  def handle_call({"LIST", []}, from, state) do
+    handle_call({"LIST", ["ACTIVE"]}, from, state)
+  end
+
+  def handle_call({"LIST", ["ACTIVE"]}, _from, state) do
+    groups = Repo.all(
+      from g in Group,
+      order_by: :name)
+      |> Enum.map(&("#{&1.name} #{&1.high_watermark} #{&1.low_watermark} #{&1.status}"))
+    respond(:continue, {215, "Listing groups", groups})
+  end
+
+  def handle_call({"LIST", ["NEWSGROUPS"]}, _from, state) do
+    groups = Repo.all(
+      from g in Group,
+      order_by: :name)
+      |> Enum.map(&("#{&1.name} #{&1.description}"))
+    respond(:continue, {215, "Listing group descriptions", groups})
+  end
+
+  def handle_call({"LIST", _}, _from, state) do
+    respond(:continue, {501, "Invalid LIST arguments"})
+  end
+
+  check_argument_count("LISTGROUP", 2)
+  def handle_call({"LISTGROUP", [_1, _2]}, _from, state) do
+    respond(:continue, {101, "TODO"})
+  end
+
+  check_argument_count("ARTICLE", 1)
+  def handle_call({"ARTICLE", [id]}, _from, state) do
+    respond(:continue, {101, "TODO"})
+  end
+
+  check_argument_count("POST", 0)
+  def handle_call({"POST", []}, _from, state) do
+    respond(:continue, {101, "TODO"})
   end
 
   def handle_call({other, _}, _from, state) do

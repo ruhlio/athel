@@ -27,16 +27,6 @@ defmodule Athel.Nntp.FormatTest do
     assert format_article(article) == "Content-Type: text/plain\r\nDate: 04 May 2016 03:02:01 -0500\r\nMessage-ID: <123@test.com>\r\nNewsgroups: fun.times,blow.away\r\nSubject: Talking to myself\r\n\r\nhow was your day?\r\nyou're too kind to ask\r\n" 
   end
 
-  test "group" do
-    group = format_group %Group {
-      name: "infected.binary",
-      status: "y",
-      low_watermark: 2,
-      high_watermark: 333,
-    }
-    assert group == "infected.binary 333 2 y"
-  end
-
   defp create_article do
     groups = [
       %Group {

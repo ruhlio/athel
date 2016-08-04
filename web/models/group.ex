@@ -3,6 +3,7 @@ defmodule Athel.Group do
 
   schema "groups" do
     field :name, :string
+    field :description, :string
     field :low_watermark, :integer
     field :high_watermark, :integer
     field :status, :string
@@ -20,7 +21,7 @@ defmodule Athel.Group do
   """
   def changeset(struct, params \\ %{}) do
     struct
-    |> cast(params, [:name, :low_watermark, :high_watermark, :status])
+    |> cast(params, [:name, :description, :low_watermark, :high_watermark, :status])
     |> validate_required([:name, :low_watermark, :high_watermark, :status])
     |> validate_format(:name, ~r/^[a-zA-Z0-9_.-]{1,128}$/)
     |> unique_constraint(:name)

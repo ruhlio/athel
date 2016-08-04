@@ -6,6 +6,7 @@ defmodule Athel.Repo.Migrations.CreateGroup do
 
     create table(:groups) do
       add :name, :string, size: 128, null: false
+      add :description, :string, size: 256, null: false
       add :low_watermark, :integer, null: false
       add :high_watermark, :integer, null: false
       add :status, :group_status, null: false

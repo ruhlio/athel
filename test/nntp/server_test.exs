@@ -1,7 +1,26 @@
 defmodule Athel.Nntp.ServerTest do
-  use ExUnit.Case
+  use Athel.ModelCase
+
+  alias Athel.Group
 
   setup do
+    Repo.insert!(%Group
+      {
+        name: "aardvarks.are.delicious",
+        description: "Aardvark enthusiats welcome",
+        status: "y",
+        low_watermark: 1,
+        high_watermark: 3
+      })
+    Repo.insert!(%Group
+      {
+        name: "cartoons.chinese",
+        description: "Glorious Chinese animation",
+        status: "m",
+        low_watermark: 5,
+        high_watermark: 10
+      })
+
     socket = connect()
     {:ok, _welcome} = :gen_tcp.recv(socket, 0)
 
@@ -40,10 +59,26 @@ defmodule Athel.Nntp.ServerTest do
     #todo: assert CommunicationError was raised
   end
 
-  test "capabilities", %{socket: socket} do
+  test "CAPABILITIES", %{socket: socket} do
     :gen_tcp.send(socket, "CAPABILITIES\r\n")
     {:ok, capabilities} = :gen_tcp.recv(socket, 0)
-    assert capabilities == "101 Listing capabilities\r\nVERSION 2\r\nPOST\r\n.\r\n"
+    assert capabilities == "101 Listing capabilities\r\nVERSION 2\r\nPOST\r\nLIST ACTIVE NEWGROUPS\r\n.\r\n"
+
+    quit(socket)
+  end
+
+  test "LIST ACTIVE", %{socket: socket} do
+    :gen_tcp.send(socket, "LIST\r\n")
+    {:ok, list} = :gen_tcp.recv(socket, 0)
+    :gen_tcp.send(socket, "LIST ACTIVE\r\n")
+    {:ok, list_active} = :gen_tcp.recv(socket, 0)
+
+    assert list == list_active
+    assert list == "215 Listing groups\r\naardvarks.are.delicious 3 1 y\r\ncartoons.chinese 10 5 m\r\n.\r\n"
+
+    :gen_tcp.send(socket, "LIST ACTIVE *.drugs\r\n")
+    {:ok, invalid} = :gen_tcp.recv(socket, 0)
+    assert invalid == "501 Invalid LIST arguments\r\n"
 
     quit(socket)
   end

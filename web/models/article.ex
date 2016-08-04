@@ -27,7 +27,7 @@ defmodule Athel.Article do
     struct
     |> cast(params, [:message_id, :from, :subject, :date, :reference, :content_type, :body])
     |> cast_assoc(:groups)
-    |> validate_format(:message_id, ~r/^[a-zA-Z0-9$.]{2,128}@[a-zA-Z0-9.-]{2,63}/)
+    |> validate_format(:message_id, ~r/^[a-zA-Z0-9$.]{2,128}@[a-zA-Z0-9.-]{2,63}$/)
     |> unique_constraint(:message_id)
     |> validate_required([:subject, :date, :content_type, :body])
   end
