@@ -1,6 +1,6 @@
 defmodule Athel.Nntp.Format do
 
-  @spec format_multiline(list(String.t)) :: String.t
+  @spec format_multiline(list(String.t | String.Chars.t)) :: String.t
   def format_multiline(lines) do
     [Enum.reduce(lines, [], &escape_line/2), ".\r\n"]
     |> IO.iodata_to_binary
@@ -59,8 +59,12 @@ defmodule Athel.Nntp.Format do
     [acc, "..", rest, "\r\n"]
   end
 
-  defp escape_line(line, acc) do
+  defp escape_line(line, acc) when is_binary(line) do
     [acc, line, "\r\n"]
+  end
+
+  defp escape_line(line, acc) do
+    escape_line(to_string(line), acc)
   end
 
 end

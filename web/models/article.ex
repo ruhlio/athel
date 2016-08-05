@@ -47,4 +47,31 @@ defmodule Athel.Article do
     |> Changeset.put_assoc(:groups, groups)
   end
 
+  @spec by_index(Athel.Group.t, integer) :: Query.t
+  def by_index(group, index) do
+    base_by_index(group, index) |> limit(1)
+  end
+
+  @spec by_index(Athel.Group.t, integer, :infinity) :: Query.t
+  def by_index(group, lower_bound, :infinity) do
+    base_by_index(group, lower_bound)
+  end
+
+  @spec by_index(Athel.Group.t, integer, integer) :: Query.t
+  def by_index(group, lower_bound, upper_bound) do
+    count = max(upper_bound - lower_bound, 0)
+    base_by_index(group, lower_bound) |> limit(^count)
+  end
+
+  defp base_by_index(group, lower_bound) do
+    lower_bound = max(group.low_watermark, lower_bound)
+    from a in Athel.Article,
+      join: g in assoc(a, :groups),
+      where: g.id == ^group.id,
+      offset: ^lower_bound,
+      order_by: :date,
+      # make `row_number()` zero-indexed to match up with `limit`
+      select: {fragment("(row_number() OVER (ORDER BY date) - 1)"), a}
+  end
+
 end

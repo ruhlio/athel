@@ -67,18 +67,58 @@ defmodule Athel.Nntp.ServerTest do
     quit(socket)
   end
 
-  test "LIST ACTIVE", %{socket: socket} do
+  test "LIST", %{socket: socket} do
     :gen_tcp.send(socket, "LIST\r\n")
     {:ok, list} = :gen_tcp.recv(socket, 0)
     :gen_tcp.send(socket, "LIST ACTIVE\r\n")
     {:ok, list_active} = :gen_tcp.recv(socket, 0)
-
     assert list == list_active
     assert list == "215 Listing groups\r\naardvarks.are.delicious 3 1 y\r\ncartoons.chinese 10 5 m\r\n.\r\n"
+
+    :gen_tcp.send(socket, "LIST NEWSGROUPS\r\n")
+    {:ok, newsgroups} = :gen_tcp.recv(socket, 0)
+    assert newsgroups == "215 Listing group descriptions\r\naardvarks.are.delicious Aardvark enthusiats welcome\r\ncartoons.chinese Glorious Chinese animation\r\n.\r\n"
 
     :gen_tcp.send(socket, "LIST ACTIVE *.drugs\r\n")
     {:ok, invalid} = :gen_tcp.recv(socket, 0)
     assert invalid == "501 Invalid LIST arguments\r\n"
+
+    quit(socket)
+  end
+
+  test "LISTGROUP", %{socket: socket} do
+    group = setup_models(10)
+    Repo.update Group.changeset(group, %{low_watermark: 5, high_watermark: 10})
+
+    :gen_tcp.send(socket, "LISTGROUP\r\n")
+    {:ok, no_group_selected} = :gen_tcp.recv(socket, 0)
+    assert no_group_selected == "412 Select a group first, ya dingus\r\n"
+
+    :gen_tcp.send(socket, "LISTGROUP DINGUS.LAND\r\n")
+    {:ok, no_such_group} = :gen_tcp.recv(socket, 0)
+    assert no_such_group == "411 No such group\r\n"
+
+    valid_response = "211 5 5 10 fun.times\r\n5\r\n6\r\n7\r\n8\r\n9\r\n.\r\n"
+
+    :gen_tcp.send(socket, "LISTGROUP fun.times\r\n")
+    {:ok, list} = :gen_tcp.recv(socket, 0)
+    assert list == valid_response
+
+    :gen_tcp.send(socket, "LISTGROUP\r\n")
+    {:ok, selected_group_list} = :gen_tcp.recv(socket, 0)
+    assert selected_group_list == valid_response
+
+    :gen_tcp.send(socket, "LISTGROUP fun.times 5-\r\n")
+    {:ok, open_range_list} = :gen_tcp.recv(socket, 0)
+    assert open_range_list == valid_response
+
+    :gen_tcp.send(socket, "LISTGROUP fun.times 5-7\r\n")
+    {:ok, closed_range_list} = :gen_tcp.recv(socket, 0)
+    assert closed_range_list == "211 5 5 10 fun.times\r\n5\r\n6\r\n.\r\n"
+
+    :gen_tcp.send(socket, "LISTGROUP fun.times 7-5\r\n")
+    {:ok, invalid_range_list} = :gen_tcp.recv(socket, 0)
+    assert invalid_range_list == "211 5 5 10 fun.times\r\n.\r\n"
 
     quit(socket)
   end

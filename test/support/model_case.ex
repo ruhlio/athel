@@ -62,4 +62,33 @@ defmodule Athel.ModelCase do
     |> Ecto.Changeset.traverse_errors(&Athel.ErrorHelpers.translate_error/1)
     |> Enum.flat_map(fn {key, errors} -> for msg <- errors, do: {key, msg} end)
   end
+
+  def setup_models(article_count) do
+    group = Athel.Repo.insert! %Athel.Group {
+      name: "fun.times",
+      description: "Funners of the world unite",
+      status: "y",
+      low_watermark: 0,
+      high_watermark: 0
+    }
+
+    for index <- 0..(article_count - 1) do
+      changeset =
+        Athel.Article.changeset(%Athel.Article{},
+          %{
+            message_id: "0#{index}@test.com",
+            from: "Me",
+            subject: "Talking to myself",
+            date: Timex.now(),
+            reference: nil,
+            content_type: "text/plain",
+            body: "LET'S ROCK OUT FOR JESUS & AMERICA"
+          })
+          |> Ecto.Changeset.put_assoc(:groups, [group])
+      Athel.Repo.insert! changeset
+    end
+
+    group
+  end
+
 end

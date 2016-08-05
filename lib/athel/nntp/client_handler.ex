@@ -6,6 +6,8 @@ defmodule Athel.Nntp.ClientHandler do
 
   alias Athel.Repo
   alias Athel.Group
+  alias Athel.Article
+
   require Athel.Nntp.Defs
   import Athel.Nntp.Defs
   alias Athel.Nntp.Parser
@@ -13,6 +15,10 @@ defmodule Athel.Nntp.ClientHandler do
 
   defmodule CommunicationError do
     defexception message: "Error while communicating with client"
+  end
+
+  defmodule State do
+    defstruct group_name: nil
   end
 
   def start_link(socket) do
@@ -23,7 +29,7 @@ defmodule Athel.Nntp.ClientHandler do
     Logger.info "Welcoming client"
     send_status(socket, {200, "WELCOME FRIEND"})
     spawn_link(__MODULE__, :recv_command, [self(), socket, []])
-    {:ok, socket}
+    {:ok, %State{}}
   end
 
   # Command handling
@@ -33,24 +39,23 @@ defmodule Athel.Nntp.ClientHandler do
   end
 
   check_argument_count("CAPABILITIES", 0)
-  def handle_call({"CAPABILITIES", _}, _from, state) do
+  def handle_call({"CAPABILITIES", _}, _sender, state) do
     capabilities = ["VERSION 2", "POST", "LIST ACTIVE NEWGROUPS"]
     respond(:continue, {101, "Listing capabilities", capabilities})
   end
 
   check_argument_count("QUIT", 0)
-  def handle_call({"QUIT", _}, _from, state) do
+  def handle_call({"QUIT", _}, _sender, state) do
     respond(:quit, {205, "SEE YA"})
   end
 
   #TODO: LIST ACTIVE with wildmat
   check_argument_count("LIST", 2)
-
-  def handle_call({"LIST", []}, from, state) do
-    handle_call({"LIST", ["ACTIVE"]}, from, state)
+  def handle_call({"LIST", []}, sender, state) do
+    handle_call({"LIST", ["ACTIVE"]}, sender, state)
   end
 
-  def handle_call({"LIST", ["ACTIVE"]}, _from, state) do
+  def handle_call({"LIST", ["ACTIVE"]}, _sender, state) do
     groups = Repo.all(
       from g in Group,
       order_by: :name)
@@ -58,7 +63,7 @@ defmodule Athel.Nntp.ClientHandler do
     respond(:continue, {215, "Listing groups", groups})
   end
 
-  def handle_call({"LIST", ["NEWSGROUPS"]}, _from, state) do
+  def handle_call({"LIST", ["NEWSGROUPS"]}, _sender, state) do
     groups = Repo.all(
       from g in Group,
       order_by: :name)
@@ -66,39 +71,85 @@ defmodule Athel.Nntp.ClientHandler do
     respond(:continue, {215, "Listing group descriptions", groups})
   end
 
-  def handle_call({"LIST", _}, _from, state) do
+  def handle_call({"LIST", _}, _sender, state) do
     respond(:continue, {501, "Invalid LIST arguments"})
   end
 
   check_argument_count("LISTGROUP", 2)
-  def handle_call({"LISTGROUP", [_1, _2]}, _from, state) do
-    respond(:continue, {101, "TODO"})
+  def handle_call({"LISTGROUP", []}, sender, state) do
+    case state.group_name do
+      nil -> respond(:error, {412, "Select a group first, ya dingus"})
+      group_name -> handle_call({"LISTGROUP", [group_name, "1-"]}, sender, state)
+    end
+  end
+
+  def handle_call({"LISTGROUP", [group_name]}, sender, state) do
+    handle_call({"LISTGROUP", [group_name, "1-"]}, sender, state)
+  end
+
+  def handle_call({"LISTGROUP", [group_name, range]}, _sender, state) do
+    case Repo.get_by(Group, name: group_name) do
+      nil -> respond(:continue, {411, "No such group"})
+      group ->
+        case Regex.run(~r/(\d+)(-(\d+)?)?/, range) do
+          [_, index] ->
+            {index, _} = Integer.parse(index)
+            Article.by_index(group, index)
+            |> listgroup_response(group, state)
+          [_, lower_bound, _unbounded] ->
+            {lower_bound, _} = Integer.parse(lower_bound)
+            Article.by_index(group, lower_bound, :infinity)
+            |> listgroup_response(group, state)
+          [_, lower_bound, _, upper_bound] ->
+            {lower_bound, _} = Integer.parse(lower_bound)
+            {upper_bound, _} = Integer.parse(upper_bound)
+            Article.by_index(group, lower_bound, upper_bound)
+            |> listgroup_response(group, state)
+          nil ->
+            respond(:error, {501, "Syntax error in range argument"})
+        end
+    end
+  end
+
+  defp listgroup_response(query, group, state) do
+    indexes = Repo.all(query) |> Enum.map(fn {index, _article} -> index end)
+    status = "#{group.high_watermark - group.low_watermark} #{group.low_watermark} #{group.high_watermark} #{group.name}"
+    {
+      :reply,
+      {:continue, {211, status, indexes}},
+      %{state | group_name: group.name}
+    }
   end
 
   check_argument_count("ARTICLE", 1)
-  def handle_call({"ARTICLE", [id]}, _from, state) do
+  def handle_call({"ARTICLE", [_id]}, _sender, state) do
     respond(:continue, {101, "TODO"})
   end
 
   check_argument_count("POST", 0)
-  def handle_call({"POST", []}, _from, state) do
+  def handle_call({"POST", []}, _sender, state) do
     respond(:continue, {101, "TODO"})
   end
 
-  def handle_call({other, _}, _from, state) do
+  def handle_call({other, _}, _sender, state) do
     respond(:continue, {501, "Syntax error in #{other}"})
   end
 
   # Socket recv/send
 
   def recv_command(handler, socket, buffer) do
-    {action, rest} = case read_command(socket, buffer) do
-                       {:ok, command, rest} -> {GenServer.call(handler, command), rest}
-                       {:error, type} -> {{:continue, {501, "Syntax error in #{type}"}}, []}
-                     end
+    {action, rest} =
+      case read_command(socket, buffer) do
+        {:ok, command, rest} -> {GenServer.call(handler, command), rest}
+        {:error, type} -> {{:continue, {501, "Syntax error in #{type}"}}, []}
+      end
 
     case action do
       {:continue, response} ->
+        send_status(socket, response)
+        recv_command(handler, socket, [rest])
+      #TODO: count errors and kill connection if too many occur
+      {:error, response} ->
         send_status(socket, response)
         recv_command(handler, socket, [rest])
       {:quit, response} ->
