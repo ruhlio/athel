@@ -7,12 +7,20 @@ defmodule Athel.AdminController do
     render(conn, "new_group.html", changeset: Group.changeset(%Group{}))
   end
 
-  def create_group(conn, %{"group" => %{"name" => name, "status" => status}}) do
-      changeset = Group.changeset(%Group{}, %{
-          "name" => name,
-          "status" => status,
-          "low_watermark" => 0,
-          "high_watermark" => 0})
+  def create_group(conn, %{"group" =>
+                            %{
+                              "name" => name,
+                              "description" => description,
+                              "status" => status}
+                          }) do
+    changeset = Group.changeset(%Group{},
+      %{
+        name: name,
+        description: description,
+        status: status,
+        low_watermark: 0,
+        high_watermark: 0
+      })
 
     if changeset.valid? do
       group = Repo.insert!(changeset)

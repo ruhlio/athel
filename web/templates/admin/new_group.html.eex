@@ -2,12 +2,17 @@
 <fieldset>
     <legend>Create a group</legend>
 
-    <div class="pure-control-group">
+    <div class="">
         <%= label(form, :name, "Name") %>
         <%= text_input(form, :name, class: error_class(@changeset, :name)) %>
     </div>
 
-    <div class="pure-control-group">
+    <div class="">
+        <%= label(form, :description, "Description") %>
+        <%= textarea(form, :description, class: error_class(@changeset, :description)) %>
+    </div>
+
+    <div class="">
         <%= label(form, :status, "Status") %>
         <%= select(form, :status, ["Posting allowed": "y", "Posting disallowed": "n", "Posting moderated": "m"], class: error_class(@changeset, :status)) %>
     </div>

@@ -46,6 +46,7 @@ defmodule Athel.GroupControllerTest do
   defp create_group!() do
     Repo.insert!(%Group{
           name: "cool.runnings",
+          description: "Get on up, it's bobsled time!",
           status: "y",
           low_watermark: 0,
           high_watermark: 0})

@@ -3,7 +3,7 @@ defmodule Athel.GroupTest do
 
   alias Athel.Group
 
-  @valid_attrs %{high_watermark: 42, low_watermark: 42, name: "fun.times", status: "m"}
+  @valid_attrs %{high_watermark: 42, low_watermark: 42, name: "fun.times", status: "m", description: "OOSE OOSE"}
   @invalid_attrs %{high_watermark: -1, low_watermark: -1, name: "yo la tengo", status: "BANANAPANIC"}
 
   test "changeset with valid attributes" do

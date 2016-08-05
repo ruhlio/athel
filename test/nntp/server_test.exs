@@ -7,7 +7,7 @@ defmodule Athel.Nntp.ServerTest do
     Repo.insert!(%Group
       {
         name: "aardvarks.are.delicious",
-        description: "Aardvark enthusiats welcome",
+        description: "Aardvark enthusiasts welcome",
         status: "y",
         low_watermark: 1,
         high_watermark: 3
@@ -77,7 +77,7 @@ defmodule Athel.Nntp.ServerTest do
 
     :gen_tcp.send(socket, "LIST NEWSGROUPS\r\n")
     {:ok, newsgroups} = :gen_tcp.recv(socket, 0)
-    assert newsgroups == "215 Listing group descriptions\r\naardvarks.are.delicious Aardvark enthusiats welcome\r\ncartoons.chinese Glorious Chinese animation\r\n.\r\n"
+    assert newsgroups == "215 Listing group descriptions\r\naardvarks.are.delicious Aardvark enthusiasts welcome\r\ncartoons.chinese Glorious Chinese animation\r\n.\r\n"
 
     :gen_tcp.send(socket, "LIST ACTIVE *.drugs\r\n")
     {:ok, invalid} = :gen_tcp.recv(socket, 0)
