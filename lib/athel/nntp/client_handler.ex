@@ -113,12 +113,33 @@ defmodule Athel.Nntp.ClientHandler do
 
   defp listgroup_response(query, group, state) do
     indexes = Repo.all(query) |> Enum.map(fn {index, _article} -> index end)
-    status = "#{group.high_watermark - group.low_watermark} #{group.low_watermark} #{group.high_watermark} #{group.name}"
     {
       :reply,
-      {:continue, {211, status, indexes}},
+      {:continue, {211, format_group_status(group), indexes}},
       %{state | group_name: group.name}
     }
+  end
+
+  check_argument_count("GROUP", 1)
+  def handle_call({"GROUP", []}, _sender, state) do
+    respond(:error, {501, "Syntax error: group name must be provided"})
+  end
+
+  def handle_call({"GROUP", [group_name]}, _sender, state) do
+    case Repo.get_by(Group, name: group_name) do
+      nil ->
+        respond(:continue, {411, "No such group"})
+      group ->
+        {
+          :reply,
+          {:continue, {211, format_group_status(group)}},
+          %{state | group_name: group.name}
+        }
+    end
+  end
+
+  defp format_group_status(group) do
+    "#{group.high_watermark - group.low_watermark} #{group.low_watermark} #{group.high_watermark} #{group.name}"
   end
 
   check_argument_count("ARTICLE", 1)

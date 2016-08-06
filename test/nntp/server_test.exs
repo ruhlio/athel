@@ -4,23 +4,6 @@ defmodule Athel.Nntp.ServerTest do
   alias Athel.Group
 
   setup do
-    Repo.insert!(%Group
-      {
-        name: "aardvarks.are.delicious",
-        description: "Aardvark enthusiasts welcome",
-        status: "y",
-        low_watermark: 1,
-        high_watermark: 3
-      })
-    Repo.insert!(%Group
-      {
-        name: "cartoons.chinese",
-        description: "Glorious Chinese animation",
-        status: "m",
-        low_watermark: 5,
-        high_watermark: 10
-      })
-
     socket = connect()
     {:ok, _welcome} = :gen_tcp.recv(socket, 0)
 
@@ -59,6 +42,28 @@ defmodule Athel.Nntp.ServerTest do
     #todo: assert CommunicationError was raised
   end
 
+  test "too many arguments", %{socket: socket} do
+    argument_counts = %{
+      "CAPABILITIES" => 0,
+      "QUIT" => 0,
+      "LIST" => 2,
+      "LISTGROUP" => 2,
+      "GROUP" => 1
+    }
+
+    for {command, argument_count} <- argument_counts do
+      arguments = Stream.repeatedly(fn -> "apple" end)
+      |> Enum.take(argument_count + 1)
+      |> Enum.join(" ")
+
+      :gen_tcp.send(socket, "#{command} #{arguments}\r\n")
+      {:ok, too_many_arguments} = :gen_tcp.recv(socket, 0)
+      assert too_many_arguments == "501 Too many arguments\r\n"  
+    end
+
+    quit(socket)
+  end
+
   test "CAPABILITIES", %{socket: socket} do
     :gen_tcp.send(socket, "CAPABILITIES\r\n")
     {:ok, capabilities} = :gen_tcp.recv(socket, 0)
@@ -68,6 +73,23 @@ defmodule Athel.Nntp.ServerTest do
   end
 
   test "LIST", %{socket: socket} do
+    Repo.insert!(%Group
+      {
+        name: "aardvarks.are.delicious",
+        description: "Aardvark enthusiasts welcome",
+        status: "y",
+        low_watermark: 1,
+        high_watermark: 3
+      })
+    Repo.insert!(%Group
+      {
+        name: "cartoons.chinese",
+        description: "Glorious Chinese animation",
+        status: "m",
+        low_watermark: 5,
+        high_watermark: 10
+      })
+
     :gen_tcp.send(socket, "LIST\r\n")
     {:ok, list} = :gen_tcp.recv(socket, 0)
     :gen_tcp.send(socket, "LIST ACTIVE\r\n")
@@ -119,6 +141,30 @@ defmodule Athel.Nntp.ServerTest do
     :gen_tcp.send(socket, "LISTGROUP fun.times 7-5\r\n")
     {:ok, invalid_range_list} = :gen_tcp.recv(socket, 0)
     assert invalid_range_list == "211 5 5 10 fun.times\r\n.\r\n"
+
+    quit(socket)
+  end
+
+  test "GROUP", %{socket: socket} do
+    group = setup_models(2)
+    Repo.update Group.changeset(group, %{low_watermark: 5, high_watermark: 10})
+
+    :gen_tcp.send(socket, "GROUP\r\n")
+    {:ok, syntax_error} = :gen_tcp.recv(socket, 0)
+    assert syntax_error == "501 Syntax error: group name must be provided\r\n"
+
+    :gen_tcp.send(socket, "GROUP asinine.debate\r\n")
+    {:ok, no_such_group} = :gen_tcp.recv(socket, 0)
+    assert no_such_group == "411 No such group\r\n"
+
+    :gen_tcp.send(socket, "GROUP fun.times\r\n")
+    {:ok, resp} = :gen_tcp.recv(socket, 0)
+    assert resp == "211 5 5 10 fun.times\r\n"
+
+    # verify selected group was set for session
+    :gen_tcp.send(socket, "LISTGROUP\r\n")
+    {:ok, list_resp} = :gen_tcp.recv(socket, 0)
+    assert String.starts_with?(list_resp, "211")
 
     quit(socket)
   end
