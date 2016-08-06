@@ -8,7 +8,7 @@ defmodule Athel.Nntp.Server do
   @spec handle_client(:gen_tcp.socket) :: Supervisor.on_start_child
   def handle_client(socket) do
     {:ok, {client_addr, client_port}} = :inet.peername(socket)
-    client_addr = Tuple.to_list(client_addr) |> Enum.join(".")
+    client_addr = client_addr |> Tuple.to_list |> Enum.join(".")
     Supervisor.start_child(__MODULE__,
       {
         "#{Athel.Nntp.ClientHandler}@#{client_addr}:#{client_port}",

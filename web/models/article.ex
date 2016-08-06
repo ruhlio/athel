@@ -32,8 +32,7 @@ defmodule Athel.Article do
     |> validate_required([:subject, :date, :content_type, :body])
   end
 
-  #todo: can't reference Athel.Article.t
-  @spec topic_changeset(struct(), list(Athel.Group.t), changeset_params) :: Changeset.t
+  @spec topic_changeset(__MODULE__, list(Athel.Group.t), changeset_params) :: Changeset.t
   def topic_changeset(struct, groups, params \\ %{}) do
     #todo: pull in hostname
     id = UUID.generate() |> String.replace("-", ".")
@@ -43,34 +42,36 @@ defmodule Athel.Article do
           "reference" => nil,
           "date" => Timex.now()
       })
-    changeset(struct, params)
+
+    struct
+    |> changeset(params)
     |> Changeset.put_assoc(:groups, groups)
   end
 
   @spec by_index(Athel.Group.t, integer) :: Query.t
   def by_index(group, index) do
-    base_by_index(group, index) |> limit(1)
+    group |> base_by_index(index) |> limit(1)
   end
 
   @spec by_index(Athel.Group.t, integer, :infinity) :: Query.t
   def by_index(group, lower_bound, :infinity) do
-    base_by_index(group, lower_bound)
+    group |> base_by_index(lower_bound)
   end
 
   @spec by_index(Athel.Group.t, integer, integer) :: Query.t
   def by_index(group, lower_bound, upper_bound) do
     count = max(upper_bound - lower_bound, 0)
-    base_by_index(group, lower_bound) |> limit(^count)
+    group |> base_by_index(lower_bound) |> limit(^count)
   end
 
   defp base_by_index(group, lower_bound) do
     lower_bound = max(group.low_watermark, lower_bound)
-    from a in Athel.Article,
+    from a in __MODULE__,
       join: g in assoc(a, :groups),
       where: g.id == ^group.id,
       offset: ^lower_bound,
       order_by: :date,
-      # make `row_number()` zero-indexed to match up with `limit`
+      # make `row_number()` zero-indexed to match up with `offset`
       select: {fragment("(row_number() OVER (ORDER BY date) - 1)"), a}
   end
 

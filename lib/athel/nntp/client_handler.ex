@@ -55,19 +55,19 @@ defmodule Athel.Nntp.ClientHandler do
     handle_call({"LIST", ["ACTIVE"]}, sender, state)
   end
 
+  @lint {Credo.Check.Refactor.PipeChainStart, false}
   def handle_call({"LIST", ["ACTIVE"]}, _sender, state) do
-    groups = Repo.all(
-      from g in Group,
-      order_by: :name)
-      |> Enum.map(&("#{&1.name} #{&1.high_watermark} #{&1.low_watermark} #{&1.status}"))
+    groups = from(g in Group, order_by: :name)
+    |> Repo.all
+    |> Enum.map(&("#{&1.name} #{&1.high_watermark} #{&1.low_watermark} #{&1.status}"))
     respond(:continue, {215, "Listing groups", groups})
   end
 
+  @lint {Credo.Check.Refactor.PipeChainStart, false}
   def handle_call({"LIST", ["NEWSGROUPS"]}, _sender, state) do
-    groups = Repo.all(
-      from g in Group,
-      order_by: :name)
-      |> Enum.map(&("#{&1.name} #{&1.description}"))
+    groups = from(g in Group, order_by: :name)
+    |> Repo.all
+    |> Enum.map(&("#{&1.name} #{&1.description}"))
     respond(:continue, {215, "Listing group descriptions", groups})
   end
 
@@ -94,16 +94,19 @@ defmodule Athel.Nntp.ClientHandler do
         case Regex.run(~r/(\d+)(-(\d+)?)?/, range) do
           [_, index] ->
             {index, _} = Integer.parse(index)
-            Article.by_index(group, index)
+            group
+            |> Article.by_index(index)
             |> listgroup_response(group, state)
           [_, lower_bound, _unbounded] ->
             {lower_bound, _} = Integer.parse(lower_bound)
-            Article.by_index(group, lower_bound, :infinity)
+            group
+            |> Article.by_index(lower_bound, :infinity)
             |> listgroup_response(group, state)
           [_, lower_bound, _, upper_bound] ->
             {lower_bound, _} = Integer.parse(lower_bound)
             {upper_bound, _} = Integer.parse(upper_bound)
-            Article.by_index(group, lower_bound, upper_bound)
+            group
+            |> Article.by_index(lower_bound, upper_bound)
             |> listgroup_response(group, state)
           nil ->
             respond(:error, {501, "Syntax error in range argument"})
@@ -112,7 +115,7 @@ defmodule Athel.Nntp.ClientHandler do
   end
 
   defp listgroup_response(query, group, state) do
-    indexes = Repo.all(query) |> Enum.map(fn {index, _article} -> index end)
+    indexes = query |> Repo.all |> Enum.map(fn {index, _article} -> index end)
     {
       :reply,
       {:continue, {211, format_group_status(group), indexes}},

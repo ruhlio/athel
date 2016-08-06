@@ -54,7 +54,7 @@ defmodule Athel.Nntp.Parser do
   end
 
   defp end_code({acc, 3}, rest) do
-    {IO.iodata_to_binary(acc) |> String.to_integer, rest}
+    {acc |> IO.iodata_to_binary |> String.to_integer, rest}
   end
 
   defp end_code(_, _) do
@@ -142,7 +142,7 @@ defmodule Athel.Nntp.Parser do
 
   defp header_name(<<next, rest :: binary>>, acc) do
     #todo: `not in` guard?
-    if (next in @whitespace or next in '\r\n'), do: syntax_error(:header_name)
+    if next in @whitespace or next in '\r\n', do: syntax_error(:header_name)
     header_name(rest, [acc, next])
   end
 
@@ -193,7 +193,7 @@ defmodule Athel.Nntp.Parser do
   end
 
   defp end_command(command, arguments, rest) do
-    arguments = Enum.map(arguments, &IO.iodata_to_binary/1) |> Enum.reverse
+    arguments = arguments |> Enum.map(&IO.iodata_to_binary/1) |> Enum.reverse
     {IO.iodata_to_binary(command), arguments, rest}
   end
 

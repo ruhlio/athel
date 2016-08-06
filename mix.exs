@@ -39,7 +39,8 @@ defmodule Athel.Mixfile do
       {:cowboy, "~> 1.0"},
       # added by hand
       {:timex, "~> 3.0"},
-      {:timex_ecto, "~> 3.0"}
+      {:timex_ecto, "~> 3.0"},
+      {:credo, "~> 0.4", only: [:dev, :test]}
     ]
   end
 
