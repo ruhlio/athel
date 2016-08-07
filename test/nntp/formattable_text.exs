@@ -1,34 +1,34 @@
 defmodule Athel.Nntp.FormatTest do
   use ExUnit.Case, async: true
 
-  import Athel.Nntp.Format
+  alias Athel.Nntp.Formattable
   alias Athel.Article
   alias Athel.Group
 
   test "multiline multiline" do
-    assert format_multiline(~w(cat in the hat)) == "cat\r\nin\r\nthe\r\nhat\r\n.\r\n"
+    assert Formattable.format(~w(cat in the hat)) == "cat\r\nin\r\nthe\r\nhat\r\n.\r\n"
   end
 
   test "singleline multiline" do
-    assert format_multiline(~w(HORSE)) == "HORSE\r\n.\r\n"
+    assert Formattable.format(~w(HORSE)) == "HORSE\r\n.\r\n"
   end
 
   test "empty multiline" do
-    assert format_multiline([]) == ".\r\n"
+    assert Formattable.format([]) == ".\r\n"
   end
 
   test "multiline with non-binary lines" do
-    assert format_multiline(1..5) == "1\r\n2\r\n3\r\n4\r\n5\r\n.\r\n"
+    assert Formattable.format(1..5) == "1\r\n2\r\n3\r\n4\r\n5\r\n.\r\n"
   end
 
   test "article" do
     article = create_article()
-    assert format_article(article) == "Content-Type: text/plain\r\nDate: 04 May 2016 03:02:01 -0500\r\nFrom: Me\r\nMessage-ID: <123@test.com>\r\nNewsgroups: fun.times,blow.away\r\nReferences: <547@heav.en>\r\nSubject: Talking to myself\r\n\r\nhow was your day?\r\nyou're too kind to ask\r\n"
+    assert Formattable.format(article) == "Content-Type: text/plain\r\nDate: 04 May 2016 03:02:01 -0500\r\nFrom: Me\r\nMessage-ID: <123@test.com>\r\nNewsgroups: fun.times,blow.away\r\nReferences: <547@heav.en>\r\nSubject: Talking to myself\r\n\r\nhow was your day?\r\nyou're too kind to ask\r\n.\r\n"
   end
 
   test "article without optional fields" do
     article = %{create_article() | reference: nil, from: nil}
-    assert format_article(article) == "Content-Type: text/plain\r\nDate: 04 May 2016 03:02:01 -0500\r\nMessage-ID: <123@test.com>\r\nNewsgroups: fun.times,blow.away\r\nSubject: Talking to myself\r\n\r\nhow was your day?\r\nyou're too kind to ask\r\n" 
+    assert Formattable.format(article) == "Content-Type: text/plain\r\nDate: 04 May 2016 03:02:01 -0500\r\nMessage-ID: <123@test.com>\r\nNewsgroups: fun.times,blow.away\r\nSubject: Talking to myself\r\n\r\nhow was your day?\r\nyou're too kind to ask\r\n.\r\n"
   end
 
   defp create_article do

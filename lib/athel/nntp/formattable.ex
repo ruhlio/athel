@@ -17,7 +17,7 @@ defmodule Athel.Nntp.Format do
       "Date" => Timex.format!(article.date, "%d %b %Y %H:%M:%S %z", :strftime),
       "Content-Type" => article.content_type
     }
-    body = format_body(article.body)
+    body = article.body |> String.split("\n") |> format_multiline
 
     [headers, body] |> IO.iodata_to_binary
   end
@@ -49,12 +49,6 @@ defmodule Athel.Nntp.Format do
     [?<, message_id, ?>]
   end
 
-  defp format_body(body) do
-    body
-    |> String.split("\n")
-    |> Enum.reduce([], fn (line, acc) -> [acc, line, "\r\n"] end)
-  end
-
   defp escape_line(<<".", rest :: binary>>, acc) do
     [acc, "..", rest, "\r\n"]
   end
@@ -67,4 +61,33 @@ defmodule Athel.Nntp.Format do
     escape_line(to_string(line), acc)
   end
 
+end
+
+defprotocol Athel.Nntp.Formattable do
+  @spec format(t) :: String.t
+  def format(formattable)
+end
+
+defimpl Athel.Nntp.Formattable, for: List do
+  import Athel.Nntp.Format
+
+  def format(list) do
+    format_multiline(list)
+  end
+end
+
+defimpl Athel.Nntp.Formattable, for: Range do
+  import Athel.Nntp.Format
+
+  def format(range) do
+    format_multiline(range)
+  end
+end
+
+defimpl Athel.Nntp.Formattable, for: Athel.Article do
+  import Athel.Nntp.Format
+
+  def format(article) do
+    format_article(article)
+  end
 end

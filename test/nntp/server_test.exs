@@ -1,7 +1,8 @@
 defmodule Athel.Nntp.ServerTest do
   use Athel.ModelCase
 
-  alias Athel.Group
+  alias Athel.{Group, Article}
+  alias Athel.Nntp.Formattable
 
   setup do
     socket = connect()
@@ -167,6 +168,32 @@ defmodule Athel.Nntp.ServerTest do
     assert String.starts_with?(list_resp, "211")
 
     quit(socket)
+  end
+
+  test "ARTICLE", %{socket: socket} do
+    setup_models(5)
+    article = Article
+    |> Repo.get("01@test.com")
+    |> Repo.preload(:groups)
+    |> Formattable.format
+
+    assert send_recv(socket, "ARTICLE <nananananana@batman>\r\n") =~ ~r/^430/
+    assert send_recv(socket, "ARTICLE <01@test.com>\r\n") == "220 0 <01@test.com>\r\n#{article}"
+    assert send_recv(socket, "ARTICLE\r\n") =~ ~r/^420/
+    assert send_recv(socket, "ARTICLE 2\r\n") =~  ~r/^412/
+    send_recv(socket, "GROUP fun.times\r\n")
+    assert send_recv(socket, "ARTICLE\r\n") =~ ~r/^420/
+    assert send_recv(socket, "ARTICLE 1\r\n") == "220 1 <01@test.com>\r\n#{article}"
+    assert send_recv(socket, "ARTICLE\r\n") == "220 1 <01@test.com>\r\n#{article}"
+    assert send_recv(socket, "ARTICLE 50\r\n") =~ ~r/^423/
+
+    quit(socket)
+  end
+
+  defp send_recv(socket, payload) do
+    :gen_tcp.send(socket, payload)
+    {:ok, resp} = :gen_tcp.recv(socket, 0)
+    resp
   end
 
 end

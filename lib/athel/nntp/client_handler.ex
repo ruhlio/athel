@@ -4,21 +4,18 @@ defmodule Athel.Nntp.ClientHandler do
   require Logger
   import Ecto.Query
 
-  alias Athel.Repo
-  alias Athel.Group
-  alias Athel.Article
+  alias Athel.{Repo, Group, Article}
 
   require Athel.Nntp.Defs
   import Athel.Nntp.Defs
-  alias Athel.Nntp.Parser
-  alias Athel.Nntp.Format
+  alias Athel.Nntp.{Parser, Formattable}
 
   defmodule CommunicationError do
     defexception message: "Error while communicating with client"
   end
 
   defmodule State do
-    defstruct group_name: nil
+    defstruct group_name: nil, article_index: nil
   end
 
   def start_link(socket) do
@@ -72,13 +69,13 @@ defmodule Athel.Nntp.ClientHandler do
   end
 
   def handle_call({"LIST", _}, _sender, state) do
-    respond(:continue, {501, "Invalid LIST arguments"})
+    respond(:error, {501, "Invalid LIST arguments"})
   end
 
   check_argument_count("LISTGROUP", 2)
   def handle_call({"LISTGROUP", []}, sender, state) do
     case state.group_name do
-      nil -> respond(:error, {412, "Select a group first, ya dingus"})
+      nil -> respond(:continue, {412, "Select a group first, ya dingus"})
       group_name -> handle_call({"LISTGROUP", [group_name, "1-"]}, sender, state)
     end
   end
@@ -146,8 +143,53 @@ defmodule Athel.Nntp.ClientHandler do
   end
 
   check_argument_count("ARTICLE", 1)
-  def handle_call({"ARTICLE", [_id]}, _sender, state) do
-    respond(:continue, {101, "TODO"})
+  def handle_call({"ARTICLE", []}, sender, state) do
+    case state.article_index do
+      nil -> respond(:continue, {420, "BLAISE IT"})
+      article_index -> handle_call({"ARTICLE", [article_index]}, sender, state)
+    end
+  end
+
+  def handle_call({"ARTICLE", [id]}, _sender, state) do
+    message_id =
+      case Regex.run(~r/^<(.*)>$/, to_string(id)) do
+        [_, id] -> id
+        _ -> nil
+      end
+
+    cond do
+      !is_nil(message_id) ->
+        case Repo.get(Article, message_id) do
+          nil ->
+            respond(:continue, {430, "No such article"})
+          article ->
+            respond(:continue, {220, "0 #{id}", article |> Repo.preload(:groups)})
+        end
+      Regex.match?(~r/^\d+$/, to_string(id)) ->
+        case state.group_name do
+          nil -> respond(:continue, {412, "You ain't touchin none my articles till you touch one of my groups"})
+          group_name ->
+            {index, _} = if is_number(id), do: {id, ()}, else: Integer.parse(id)
+            state = %{state | article_index: index}
+            group = Repo.get_by(Group, name: group_name)
+            article = group
+            |> Article.by_index(index)
+            |> Repo.one
+
+            cond do
+              is_nil(article) && is_number(id) ->
+                respond(:continue, {420, "BLAISE IT"})
+              is_nil(article) ->
+                respond(:continue, {423, "Bad index bro"})
+              true ->
+                {_, article} = article
+                respond(:continue, {220, "#{index} <#{article.message_id}>",
+                                    article |> Repo.preload(:groups)})
+            end
+        end
+      true ->
+        respond(:error, {501, "Invalid message id/index"})
+    end
   end
 
   check_argument_count("POST", 0)
@@ -206,9 +248,9 @@ defmodule Athel.Nntp.ClientHandler do
     :gen_tcp.send(socket, "#{code} #{message}\r\n")
   end
 
-  defp send_status(socket, {code, message, lines}) do
-    multiline = Format.format_multiline(lines)
-    :gen_tcp.send(socket, "#{code} #{message}\r\n#{multiline}")
+  defp send_status(socket, {code, message, body}) do
+    body = Formattable.format(body)
+    :gen_tcp.send(socket, "#{code} #{message}\r\n#{body}")
   end
 
 end
