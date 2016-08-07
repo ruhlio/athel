@@ -28,11 +28,9 @@ defmodule Athel.Nntp.ServerTest do
     socket = connect()
 
     {:ok, welcome} = :gen_tcp.recv(socket, 0)
-    assert welcome == "200 WELCOME FRIEND\r\n"
+    assert welcome =~ status(200)
 
-    :gen_tcp.send(socket, "QUIT\r\n")
-    {:ok, goodbye} = :gen_tcp.recv(socket, 0)
-    assert goodbye == "205 SEE YA\r\n"
+    assert send_recv(socket, "QUIT\r\n") =~ status(205)
 
     :gen_tcp.close(socket)
     quit(setup_socket)
@@ -57,18 +55,14 @@ defmodule Athel.Nntp.ServerTest do
       |> Enum.take(argument_count + 1)
       |> Enum.join(" ")
 
-      :gen_tcp.send(socket, "#{command} #{arguments}\r\n")
-      {:ok, too_many_arguments} = :gen_tcp.recv(socket, 0)
-      assert too_many_arguments == "501 Too many arguments\r\n"  
+      assert send_recv(socket, "#{command} #{arguments}\r\n") == "501 Too many arguments\r\n"
     end
 
     quit(socket)
   end
 
   test "CAPABILITIES", %{socket: socket} do
-    :gen_tcp.send(socket, "CAPABILITIES\r\n")
-    {:ok, capabilities} = :gen_tcp.recv(socket, 0)
-    assert capabilities == "101 Listing capabilities\r\nVERSION 2\r\nPOST\r\nLIST ACTIVE NEWGROUPS\r\n.\r\n"
+    assert send_recv(socket, "CAPABILITIES\r\n") == "101 Listing capabilities\r\nVERSION 2\r\nPOST\r\nLIST ACTIVE NEWGROUPS\r\n.\r\n"
 
     quit(socket)
   end
@@ -91,20 +85,12 @@ defmodule Athel.Nntp.ServerTest do
         high_watermark: 10
       })
 
-    :gen_tcp.send(socket, "LIST\r\n")
-    {:ok, list} = :gen_tcp.recv(socket, 0)
-    :gen_tcp.send(socket, "LIST ACTIVE\r\n")
-    {:ok, list_active} = :gen_tcp.recv(socket, 0)
+    list = send_recv(socket, "LIST\r\n")
+    list_active = send_recv(socket, "LIST ACTIVE\r\n")
     assert list == list_active
     assert list == "215 Listing groups\r\naardvarks.are.delicious 3 1 y\r\ncartoons.chinese 10 5 m\r\n.\r\n"
-
-    :gen_tcp.send(socket, "LIST NEWSGROUPS\r\n")
-    {:ok, newsgroups} = :gen_tcp.recv(socket, 0)
-    assert newsgroups == "215 Listing group descriptions\r\naardvarks.are.delicious Aardvark enthusiasts welcome\r\ncartoons.chinese Glorious Chinese animation\r\n.\r\n"
-
-    :gen_tcp.send(socket, "LIST ACTIVE *.drugs\r\n")
-    {:ok, invalid} = :gen_tcp.recv(socket, 0)
-    assert invalid == "501 Invalid LIST arguments\r\n"
+    assert send_recv(socket, "LIST NEWSGROUPS\r\n")== "215 Listing group descriptions\r\naardvarks.are.delicious Aardvark enthusiasts welcome\r\ncartoons.chinese Glorious Chinese animation\r\n.\r\n"
+    assert send_recv(socket, "LIST ACTIVE *.drugs\r\n") == "501 Invalid LIST arguments\r\n"
 
     quit(socket)
   end
@@ -113,35 +99,17 @@ defmodule Athel.Nntp.ServerTest do
     group = setup_models(10)
     Repo.update Group.changeset(group, %{low_watermark: 5, high_watermark: 10})
 
-    :gen_tcp.send(socket, "LISTGROUP\r\n")
-    {:ok, no_group_selected} = :gen_tcp.recv(socket, 0)
-    assert no_group_selected == "412 Select a group first, ya dingus\r\n"
-
-    :gen_tcp.send(socket, "LISTGROUP DINGUS.LAND\r\n")
-    {:ok, no_such_group} = :gen_tcp.recv(socket, 0)
-    assert no_such_group == "411 No such group\r\n"
+    assert send_recv(socket, "LISTGROUP\r\n") == "412 Select a group first, ya dingus\r\n"
+    assert send_recv(socket, "LISTGROUP DINGUS.LAND\r\n") =~ status(411)
 
     valid_response = "211 5 5 10 fun.times\r\n5\r\n6\r\n7\r\n8\r\n9\r\n.\r\n"
+    assert send_recv(socket, "LISTGROUP fun.times\r\n") == valid_response
+    assert send_recv(socket, "LISTGROUP\r\n") == valid_response
+    assert send_recv(socket, "LISTGROUP fun.times 5-\r\n") == valid_response
 
-    :gen_tcp.send(socket, "LISTGROUP fun.times\r\n")
-    {:ok, list} = :gen_tcp.recv(socket, 0)
-    assert list == valid_response
+    assert send_recv(socket, "LISTGROUP fun.times 5-7\r\n") == "211 5 5 10 fun.times\r\n5\r\n6\r\n.\r\n"
 
-    :gen_tcp.send(socket, "LISTGROUP\r\n")
-    {:ok, selected_group_list} = :gen_tcp.recv(socket, 0)
-    assert selected_group_list == valid_response
-
-    :gen_tcp.send(socket, "LISTGROUP fun.times 5-\r\n")
-    {:ok, open_range_list} = :gen_tcp.recv(socket, 0)
-    assert open_range_list == valid_response
-
-    :gen_tcp.send(socket, "LISTGROUP fun.times 5-7\r\n")
-    {:ok, closed_range_list} = :gen_tcp.recv(socket, 0)
-    assert closed_range_list == "211 5 5 10 fun.times\r\n5\r\n6\r\n.\r\n"
-
-    :gen_tcp.send(socket, "LISTGROUP fun.times 7-5\r\n")
-    {:ok, invalid_range_list} = :gen_tcp.recv(socket, 0)
-    assert invalid_range_list == "211 5 5 10 fun.times\r\n.\r\n"
+    assert send_recv(socket, "LISTGROUP fun.times 7-5\r\n") == "211 5 5 10 fun.times\r\n.\r\n"
 
     quit(socket)
   end
@@ -150,22 +118,11 @@ defmodule Athel.Nntp.ServerTest do
     group = setup_models(2)
     Repo.update Group.changeset(group, %{low_watermark: 5, high_watermark: 10})
 
-    :gen_tcp.send(socket, "GROUP\r\n")
-    {:ok, syntax_error} = :gen_tcp.recv(socket, 0)
-    assert syntax_error == "501 Syntax error: group name must be provided\r\n"
-
-    :gen_tcp.send(socket, "GROUP asinine.debate\r\n")
-    {:ok, no_such_group} = :gen_tcp.recv(socket, 0)
-    assert no_such_group == "411 No such group\r\n"
-
-    :gen_tcp.send(socket, "GROUP fun.times\r\n")
-    {:ok, resp} = :gen_tcp.recv(socket, 0)
-    assert resp == "211 5 5 10 fun.times\r\n"
-
+    assert send_recv(socket, "GROUP\r\n") == "501 Syntax error: group name must be provided\r\n"
+    assert send_recv(socket, "GROUP asinine.debate\r\n") =~ status(411)
+    assert send_recv(socket, "GROUP fun.times\r\n") == "211 5 5 10 fun.times\r\n"
     # verify selected group was set for session
-    :gen_tcp.send(socket, "LISTGROUP\r\n")
-    {:ok, list_resp} = :gen_tcp.recv(socket, 0)
-    assert String.starts_with?(list_resp, "211")
+    assert send_recv(socket, "LISTGROUP\r\n") =~ status(211)
 
     quit(socket)
   end
@@ -177,15 +134,15 @@ defmodule Athel.Nntp.ServerTest do
     |> Repo.preload(:groups)
     |> Formattable.format
 
-    assert send_recv(socket, "ARTICLE <nananananana@batman>\r\n") =~ ~r/^430/
+    assert send_recv(socket, "ARTICLE <nananananana@batman>\r\n") =~ status(430)
     assert send_recv(socket, "ARTICLE <01@test.com>\r\n") == "220 0 <01@test.com>\r\n#{article}"
-    assert send_recv(socket, "ARTICLE\r\n") =~ ~r/^420/
-    assert send_recv(socket, "ARTICLE 2\r\n") =~  ~r/^412/
+    assert send_recv(socket, "ARTICLE\r\n") =~ status(420)
+    assert send_recv(socket, "ARTICLE 2\r\n") =~ status(412)
     send_recv(socket, "GROUP fun.times\r\n")
-    assert send_recv(socket, "ARTICLE\r\n") =~ ~r/^420/
+    assert send_recv(socket, "ARTICLE\r\n") =~ status(420)
     assert send_recv(socket, "ARTICLE 1\r\n") == "220 1 <01@test.com>\r\n#{article}"
     assert send_recv(socket, "ARTICLE\r\n") == "220 1 <01@test.com>\r\n#{article}"
-    assert send_recv(socket, "ARTICLE 50\r\n") =~ ~r/^423/
+    assert send_recv(socket, "ARTICLE 50\r\n") =~ status(423)
 
     quit(socket)
   end
@@ -195,5 +152,8 @@ defmodule Athel.Nntp.ServerTest do
     {:ok, resp} = :gen_tcp.recv(socket, 0)
     resp
   end
+
+  # handle single or multiline
+  defp status(code), do: Regex.compile!("^#{code}(.|\r|\n)*\r\n$", "m")
 
 end

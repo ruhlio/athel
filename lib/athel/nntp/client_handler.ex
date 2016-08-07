@@ -165,7 +165,7 @@ defmodule Athel.Nntp.ClientHandler do
           article ->
             respond(:continue, {220, "0 #{id}", article |> Repo.preload(:groups)})
         end
-      Regex.match?(~r/^\d+$/, to_string(id)) ->
+      to_string(id) =~ ~r/^\d+$/ ->
         case state.group_name do
           nil -> respond(:continue, {412, "You ain't touchin none my articles till you touch one of my groups"})
           group_name ->
