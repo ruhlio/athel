@@ -99,7 +99,7 @@ defmodule Athel.Nntp.ServerTest do
     group = setup_models(10)
     Repo.update Group.changeset(group, %{low_watermark: 5, high_watermark: 10})
 
-    assert send_recv(socket, "LISTGROUP\r\n") == "412 Select a group first, ya dingus\r\n"
+    assert send_recv(socket, "LISTGROUP\r\n") =~ status(412)
     assert send_recv(socket, "LISTGROUP DINGUS.LAND\r\n") =~ status(411)
 
     valid_response = "211 5 5 10 fun.times\r\n5\r\n6\r\n7\r\n8\r\n9\r\n.\r\n"
