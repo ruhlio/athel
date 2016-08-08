@@ -205,6 +205,10 @@ defmodule Athel.Nntp.ClientHandler do
     end
   end
 
+  def handle_call({"MODE", ["READER"]}, _sender, state) do
+    respond(:continue, {200, "Whatever dude"})
+  end
+
   def handle_call({other, _}, _sender, state) do
     respond(:continue, {501, "Syntax error in #{other}"})
   end

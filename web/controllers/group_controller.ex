@@ -20,10 +20,10 @@ defmodule Athel.GroupController do
         "article" => %{"from" => from, "subject" => subject, "body" => body}}) do
     group = get_group(name)
     article_changes = %{
-      "from" => from,
-      "subject" => subject,
-      "body" => body,
-      "content_type" => "text/plain",
+      from: from,
+      subject: subject,
+      body: body,
+      content_type: "text/plain",
     }
     changeset = Article.topic_changeset(%Article{}, [group], article_changes)
 

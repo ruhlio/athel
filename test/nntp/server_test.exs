@@ -176,6 +176,11 @@ defmodule Athel.Nntp.ServerTest do
     quit(socket)
   end
 
+  test "MODE READER", %{socket: socket} do
+    assert send_recv(socket, "MODE READER\r\n") =~ status(200)
+    quit(socket)
+  end
+
   defp send_recv(socket, payload) do
     :gen_tcp.send(socket, payload)
     {:ok, resp} = :gen_tcp.recv(socket, 0)
