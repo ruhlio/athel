@@ -11,10 +11,10 @@ defmodule Athel.Nntp.Format do
     headers = format_headers %{
       "Newsgroups" => format_article_groups(article.groups),
       "Message-ID" => format_message_id(article.message_id),
-      "References" => format_message_id(article.reference),
+      "References" => format_message_id(article.parent_message_id),
       "From" => article.from,
       "Subject" => article.subject,
-      "Date" => Timex.format!(article.date, "%d %b %Y %H:%M:%S %z", :strftime),
+      "Date" => format_date(article.date),
       "Content-Type" => article.content_type
     }
     body = article.body |> String.split("\n") |> format_multiline
@@ -47,6 +47,14 @@ defmodule Athel.Nntp.Format do
 
   defp format_message_id(message_id) do
     [?<, message_id, ?>]
+  end
+
+  defp format_date(date) when is_nil(date) do
+    nil
+  end
+
+  defp format_date(date) do
+    Timex.format!(date, "%d %b %Y %H:%M:%S %z", :strftime)
   end
 
   defp escape_line(<<".", rest :: binary>>, acc) do

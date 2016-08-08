@@ -4,8 +4,8 @@ defmodule Athel.Nntp.Parser do
 
   @spec parse_code_line(iodata) :: parse_result({integer, String.t})
   def parse_code_line(input) do
-    {code, rest} = code(input)
-    {line, rest} = line(skip_whitespace(rest))
+    {code, rest} = input |> IO.iodata_to_binary |> code
+    {line, rest} = rest |> skip_whitespace |> line
     {:ok, {code, line}, rest}
   catch
     e -> e
@@ -13,7 +13,7 @@ defmodule Athel.Nntp.Parser do
 
   @spec parse_multiline(iodata) :: parse_result(list(String.t))
   def parse_multiline(input) do
-    {lines, rest} = multiline(input, [])
+    {lines, rest} = input |> IO.iodata_to_binary |> multiline([])
     {:ok, lines, rest}
   catch
     e -> e
@@ -21,7 +21,7 @@ defmodule Athel.Nntp.Parser do
 
   @spec parse_headers(iodata) :: parse_result(%{optional(String.t) => String.t})
   def parse_headers(input) do
-    {headers, rest} = headers(input, %{})
+    {headers, rest} = input |> IO.iodata_to_binary |> headers(%{})
     {:ok, headers, rest}
   catch
     e -> e
@@ -29,7 +29,7 @@ defmodule Athel.Nntp.Parser do
 
   @spec parse_command(iodata) :: parse_result({String.t, list(String.t)})
   def parse_command(input) do
-    {name, arguments, rest} = command(IO.iodata_to_binary(input))
+    {name, arguments, rest} = input |> IO.iodata_to_binary |> command
     {:ok, {name, arguments}, rest}
   catch
     e -> e
@@ -183,18 +183,19 @@ defmodule Athel.Nntp.Parser do
   end
 
   # end of argument
-  defp command(<<next, rest :: binary>>, {command, arguments, acc}) when next in @whitespace do
-    command(rest, {command, [acc | arguments], []})
+  defp command(<<next, rest :: binary>>, {name, arguments, acc}) when next in @whitespace do
+    command(rest, {name, [acc | arguments], []})
   end
 
   # reading argument
-  defp command(<<next, rest :: binary>>, {command, arguments, acc}) do
-    command(rest, {command, arguments, [acc, next]})
+  defp command(<<next, rest :: binary>>, {name, arguments, acc}) do
+    command(rest, {name, arguments, [acc, next]})
   end
 
-  defp end_command(command, arguments, rest) do
+  defp end_command(name, arguments, rest) do
+    name = name |> IO.iodata_to_binary |> String.upcase
     arguments = arguments |> Enum.map(&IO.iodata_to_binary/1) |> Enum.reverse
-    {IO.iodata_to_binary(command), arguments, rest}
+    {name, arguments, rest}
   end
 
   defp need_more() do

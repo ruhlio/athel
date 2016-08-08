@@ -68,22 +68,20 @@ defmodule Athel.Nntp.ServerTest do
   end
 
   test "LIST", %{socket: socket} do
-    Repo.insert!(%Group
-      {
-        name: "aardvarks.are.delicious",
-        description: "Aardvark enthusiasts welcome",
-        status: "y",
-        low_watermark: 1,
-        high_watermark: 3
-      })
-    Repo.insert!(%Group
-      {
-        name: "cartoons.chinese",
-        description: "Glorious Chinese animation",
-        status: "m",
-        low_watermark: 5,
-        high_watermark: 10
-      })
+    Repo.insert! %Group {
+      name: "aardvarks.are.delicious",
+      description: "Aardvark enthusiasts welcome",
+      status: "y",
+      low_watermark: 1,
+      high_watermark: 3
+    }
+    Repo.insert! %Group {
+      name: "cartoons.chinese",
+      description: "Glorious Chinese animation",
+      status: "m",
+      low_watermark: 5,
+      high_watermark: 10
+    }
 
     list = send_recv(socket, "LIST\r\n")
     list_active = send_recv(socket, "LIST ACTIVE\r\n")
@@ -143,6 +141,37 @@ defmodule Athel.Nntp.ServerTest do
     assert send_recv(socket, "ARTICLE 1\r\n") == "220 1 <01@test.com>\r\n#{article}"
     assert send_recv(socket, "ARTICLE\r\n") == "220 1 <01@test.com>\r\n#{article}"
     assert send_recv(socket, "ARTICLE 50\r\n") =~ status(423)
+
+    quit(socket)
+  end
+
+  test "POST", %{socket: socket} do
+    group = setup_models(3)
+    other_group = Repo.insert! %Group {
+      name: "cartoons.chinese",
+      description: "Glorious Chinese animation",
+      status: "m",
+      low_watermark: 5,
+      high_watermark: 10
+    }
+    new_article = %Article {
+      subject: "MY WAR",
+      from: ~s("MARDAR" <mardar@wardar.karfar>),
+      groups: [group, other_group],
+      content_type: "text/plain",
+      body: "YOU'RE ONE OF THEM"
+    }
+
+    assert send_recv(socket, "POST\r\n") =~ status(340)
+    assert send_recv(socket, Formattable.format(new_article)) =~ status(240)
+
+    {_, created_article} = Repo.one! Article.by_index(group, 3)
+    assert created_article.subject == new_article.subject
+    assert created_article.body == new_article.body
+
+    Repo.update! change(group, status: "n")
+    send_recv(socket, "POST\r\n")
+    assert send_recv(socket, Formattable.format(new_article)) =~ status(441)
 
     quit(socket)
   end

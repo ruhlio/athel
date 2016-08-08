@@ -194,7 +194,15 @@ defmodule Athel.Nntp.ClientHandler do
 
   check_argument_count("POST", 0)
   def handle_call({"POST", []}, _sender, state) do
-    respond(:continue, {101, "TODO"})
+    respond(:recv_article, {340, "FIRE AWAY"})
+  end
+
+  def handle_call({:article, headers, body}, _sender, state) do
+    case Repo.insert Article.post_changeset(%Article{}, headers, body) do
+      {:ok, _} -> {:reply, {240, "Thank you for your input"}, state}
+      #TODO: cleaner error message
+      {:error, changeset} -> {:reply, {441, inspect(changeset.errors)}, state}
+    end
   end
 
   def handle_call({other, _}, _sender, state) do
@@ -204,20 +212,23 @@ defmodule Athel.Nntp.ClientHandler do
   # Socket recv/send
 
   def recv_command(handler, socket, buffer) do
-    {action, rest} =
-      case read_command(socket, buffer) do
-        {:ok, command, rest} -> {GenServer.call(handler, command), rest}
+    {action, buffer} =
+      case read_and_parse(socket, buffer, &Parser.parse_command/1) do
+        {:ok, command, buffer} -> {GenServer.call(handler, command), buffer}
         {:error, type} -> {{:continue, {501, "Syntax error in #{type}"}}, []}
       end
 
     case action do
       {:continue, response} ->
         send_status(socket, response)
-        recv_command(handler, socket, [rest])
+        recv_command(handler, socket, buffer)
       #TODO: count errors and kill connection if too many occur
       {:error, response} ->
         send_status(socket, response)
-        recv_command(handler, socket, [rest])
+        recv_command(handler, socket, buffer)
+      {:recv_article, response} ->
+        send_status(socket, response)
+        recv_article(handler, socket, buffer)
       {:quit, response} ->
         send_status(socket, response)
         :ok = :gen_tcp.close(socket)
@@ -225,15 +236,33 @@ defmodule Athel.Nntp.ClientHandler do
     end
   end
 
-  defp read_command(socket, buffer) do
-    #warning: [""] won't register as empty, will a redundant
-    # trigger a parse() -> :need_more loop
-    buffer = if Enum.empty?(buffer), do: read(socket, buffer), else: buffer
+  defp recv_article(handler, socket, buffer) do
+    article =
+      with {:ok, headers, buffer} <- read_and_parse(socket, buffer, &Parser.parse_headers/1),
+           {:ok, body, buffer} <- read_and_parse(socket, buffer, &Parser.parse_multiline/1),
+      do: {{:article, headers, body}, buffer}
 
-    case Parser.parse_command(buffer) do
-      {:ok, {name, arguments}, rest} -> {:ok, {String.upcase(name), arguments}, rest}
-      {:error, type} -> {:error, type}
-      :need_more -> read_command(socket, read(socket, buffer))
+    {response, buffer} =
+      case article do
+        {:error, type} -> {{501, "Syntax error in #{type}"}, []}
+        {article, buffer} -> {GenServer.call(handler, article), buffer}
+      end
+
+    send_status(socket, response)
+    recv_command(handler, socket, buffer)
+  end
+
+  defp read_and_parse(socket, buffer, parser) do
+    buffer =
+      case buffer do
+        [] -> read(socket, buffer)
+        "" -> read(socket, [])
+        _ -> buffer
+      end
+
+    case parser.(buffer) do
+      :need_more -> read_and_parse(socket, read(socket, buffer), parser)
+      other -> other
     end
   end
 

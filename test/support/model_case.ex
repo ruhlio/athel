@@ -35,35 +35,14 @@ defmodule Athel.ModelCase do
     :ok
   end
 
-  @doc """
-  Helper for returning list of errors in a struct when given certain data.
-
-  ## Examples
-
-  Given a User schema that lists `:name` as a required field and validates
-  `:password` to be safe, it would return:
-
-      iex> errors_on(%User{}, %{password: "password"})
-      [password: "is unsafe", name: "is blank"]
-
-  You could then write your assertion like:
-
-      assert {:password, "is unsafe"} in errors_on(%User{}, %{password: "password"})
-
-  You can also create the changeset manually and retrieve the errors
-  field directly:
-
-      iex> changeset = User.changeset(%User{}, password: "password")
-      iex> {:password, "is unsafe"} in changeset.errors
-      true
-  """
-  def errors_on(struct, data) do
-    struct.__struct__.changeset(struct, data)
-    |> Ecto.Changeset.traverse_errors(&Athel.ErrorHelpers.translate_error/1)
-    |> Enum.flat_map(fn {key, errors} -> for msg <- errors, do: {key, msg} end)
+  @spec error(Changeset.t, atom) :: String.t
+  def error(changeset, key) do
+    {actual_message, _} = changeset.errors[key]
+    actual_message
   end
 
-  def setup_models(article_count) do
+  @spec setup_models(non_neg_integer) :: Athel.Group.t
+  def setup_models(article_count \\ 0) do
     group = Athel.Repo.insert! %Athel.Group {
       name: "fun.times",
       description: "Funners of the world unite",
@@ -72,20 +51,22 @@ defmodule Athel.ModelCase do
       high_watermark: 0
     }
 
-    for index <- 0..(article_count - 1) do
-      changeset =
-        Athel.Article.changeset(%Athel.Article{},
-          %{
-            message_id: "0#{index}@test.com",
-            from: "Me",
-            subject: "Talking to myself",
-            date: Timex.now(),
-            reference: nil,
-            content_type: "text/plain",
-            body: "LET'S ROCK OUT FOR JESUS & AMERICA"
-          })
-          |> Ecto.Changeset.put_assoc(:groups, [group])
-      Athel.Repo.insert! changeset
+    unless article_count == 0 do
+      for index <- 0..(article_count - 1) do
+        changeset =
+          Athel.Article.changeset(%Athel.Article{},
+            %{
+              message_id: "0#{index}@test.com",
+              from: "Me",
+              subject: "Talking to myself",
+              date: Timex.now(),
+              reference: nil,
+              content_type: "text/plain",
+              body: "LET'S ROCK OUT FOR JESUS & AMERICA"
+            })
+            |> Ecto.Changeset.put_assoc(:groups, [group])
+        Athel.Repo.insert! changeset
+      end
     end
 
     group

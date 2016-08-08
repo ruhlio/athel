@@ -4,7 +4,7 @@ defmodule Athel.Nntp.ParserTest do
   import Athel.Nntp.Parser
 
   test "valid code line" do
-    assert parse_code_line("203 all clear\r\n") == {:ok, {203, "all clear"}, ""}
+    assert parse_code_line(["203 all clear", "\r\n"]) == {:ok, {203, "all clear"}, ""}
   end
 
   test "incomplete newline" do
@@ -37,7 +37,7 @@ defmodule Athel.Nntp.ParserTest do
   end
 
   test "valid multiline" do
-    multiline = parse_multiline("hey\r\nthere\r\nparty\r\npeople\r\n.\r\n")
+    multiline = parse_multiline(["hey\r\nthere\r\nparty\r\npeople\r\n", ".\r\n"])
     assert multiline == {:ok, ~w(hey there party people), ""}
   end
 
@@ -56,7 +56,7 @@ defmodule Athel.Nntp.ParserTest do
   end
 
   test "valid headers" do
-    headers = parse_headers("Content-Type: funky/nasty\r\nBoogie-Nights: You missed that boat\r\n\r\n")
+    headers = parse_headers(["Content-Type: funky/nasty\r\nBoogie-Nights: You missed that boat\r\n", "\r\n"])
     assert headers == {:ok, %{"Content-Type" => "funky/nasty", "Boogie-Nights" => "You missed that boat"}, ""}
   end
 
@@ -88,6 +88,10 @@ defmodule Athel.Nntp.ParserTest do
   test "valid command without arguments" do
     command = parse_command("WUT\r\n")
     assert command == {:ok, {"WUT", []}, ""}
+  end
+
+  test "command name is upcased" do
+    assert parse_command("AsDf\r\n") == {:ok, {"ASDF", []}, ""}
   end
 
   test "no command" do

@@ -10,8 +10,7 @@ defmodule Athel.Group do
 
     many_to_many :articles, Athel.Article,
       join_through: "articles_to_groups",
-      join_keys: [group_id: :id, message_id: :message_id],
-      on_delete: :delete_all
+      join_keys: [group_id: :id, message_id: :message_id]
 
     timestamps()
   end
