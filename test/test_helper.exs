@@ -1,4 +1,4 @@
-ExUnit.start(timeout: 5_000)
+ExUnit.start(timeout: 7_500)
 
 Ecto.Adapters.SQL.Sandbox.mode(Athel.Repo, :manual)
 

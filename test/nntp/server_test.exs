@@ -36,10 +36,10 @@ defmodule Athel.Nntp.ServerTest do
     quit(setup_socket)
   end
 
-  test "closing connection without receiving QUIT", %{socket: socket} do
-    :gen_tcp.close(socket)
-    #todo: assert CommunicationError was raised
-  end
+  # test "closing connection without receiving QUIT", %{socket: socket} do
+  #   :gen_tcp.close(socket)
+     #TODO: assert CommunicationError was raised
+  # end
 
   test "too many arguments", %{socket: socket} do
     argument_counts = %{
@@ -62,7 +62,7 @@ defmodule Athel.Nntp.ServerTest do
   end
 
   test "CAPABILITIES", %{socket: socket} do
-    assert send_recv(socket, "CAPABILITIES\r\n") == "101 Listing capabilities\r\nVERSION 2\r\nPOST\r\nLIST ACTIVE NEWGROUPS\r\n.\r\n"
+    assert send_recv(socket, "CAPABILITIES\r\n") == "101 Listing capabilities\r\nVERSION 2\r\nPOST\r\nLIST ACTIVE NEWGROUPS\r\nSTARTTLS\r\n.\r\n"
 
     quit(socket)
   end
@@ -180,6 +180,10 @@ defmodule Athel.Nntp.ServerTest do
     assert send_recv(socket, "MODE READER\r\n") =~ status(200)
     quit(socket)
   end
+
+  # test "STARTTLS", %{socket: socket} do
+  #   assert send_recv("STARTTLS\r\n") =~ status(382)
+  # end
 
   defp send_recv(socket, payload) do
     :gen_tcp.send(socket, payload)

@@ -1,31 +1,22 @@
-defmodule Athel.Nntp.ClientHandler do
+defmodule Athel.Nntp.SessionHandler do
   use GenServer
 
   require Logger
   import Ecto.Query
 
-  alias Athel.{Repo, Group, Article}
-
   require Athel.Nntp.Defs
   import Athel.Nntp.Defs
-  alias Athel.Nntp.{Parser, Formattable}
-
-  defmodule CommunicationError do
-    defexception message: "Error while communicating with client"
-  end
+  alias Athel.{Repo, Group, Article}
 
   defmodule State do
     defstruct group_name: nil, article_index: nil
   end
 
-  def start_link(socket) do
-    GenServer.start_link(__MODULE__, socket)
+  def start_link do
+    GenServer.start_link(__MODULE__, :ok)
   end
 
-  def init(socket) do
-    Logger.info "Welcoming client"
-    send_status(socket, {200, "WELCOME FRIEND"})
-    spawn_link(__MODULE__, :recv_command, [self(), socket, []])
+  def init(:ok) do
     {:ok, %State{}}
   end
 
@@ -37,7 +28,7 @@ defmodule Athel.Nntp.ClientHandler do
 
   check_argument_count("CAPABILITIES", 0)
   def handle_call({"CAPABILITIES", _}, _sender, state) do
-    capabilities = ["VERSION 2", "POST", "LIST ACTIVE NEWGROUPS"]
+    capabilities = ["VERSION 2", "POST", "LIST ACTIVE NEWGROUPS", "STARTTLS"]
     respond(:continue, {101, "Listing capabilities", capabilities})
   end
 
@@ -215,75 +206,5 @@ defmodule Athel.Nntp.ClientHandler do
 
   # Socket recv/send
 
-  def recv_command(handler, socket, buffer) do
-    {action, buffer} =
-      case read_and_parse(socket, buffer, &Parser.parse_command/1) do
-        {:ok, command, buffer} -> {GenServer.call(handler, command), buffer}
-        {:error, type} -> {{:continue, {501, "Syntax error in #{type}"}}, []}
-      end
-
-    case action do
-      {:continue, response} ->
-        send_status(socket, response)
-        recv_command(handler, socket, buffer)
-      #TODO: count errors and kill connection if too many occur
-      {:error, response} ->
-        send_status(socket, response)
-        recv_command(handler, socket, buffer)
-      {:recv_article, response} ->
-        send_status(socket, response)
-        recv_article(handler, socket, buffer)
-      {:quit, response} ->
-        send_status(socket, response)
-        :ok = :gen_tcp.close(socket)
-        Athel.Nntp.Server.close_handler(handler)
-    end
-  end
-
-  defp recv_article(handler, socket, buffer) do
-    article =
-      with {:ok, headers, buffer} <- read_and_parse(socket, buffer, &Parser.parse_headers/1),
-           {:ok, body, buffer} <- read_and_parse(socket, buffer, &Parser.parse_multiline/1),
-      do: {{:article, headers, body}, buffer}
-
-    {response, buffer} =
-      case article do
-        {:error, type} -> {{501, "Syntax error in #{type}"}, []}
-        {article, buffer} -> {GenServer.call(handler, article), buffer}
-      end
-
-    send_status(socket, response)
-    recv_command(handler, socket, buffer)
-  end
-
-  defp read_and_parse(socket, buffer, parser) do
-    buffer =
-      case buffer do
-        [] -> read(socket, buffer)
-        "" -> read(socket, [])
-        _ -> buffer
-      end
-
-    case parser.(buffer) do
-      :need_more -> read_and_parse(socket, read(socket, buffer), parser)
-      other -> other
-    end
-  end
-
-  defp read(socket, buffer) do
-    case :gen_tcp.recv(socket, 0) do
-      {:ok, received} -> [buffer, received]
-      {:error, :closed} -> raise CommunicationError, message: "Client terminated connection prematurely"
-    end
-  end
-
-  defp send_status(socket, {code, message}) do
-    :gen_tcp.send(socket, "#{code} #{message}\r\n")
-  end
-
-  defp send_status(socket, {code, message, body}) do
-    body = Formattable.format(body)
-    :gen_tcp.send(socket, "#{code} #{message}\r\n#{body}")
-  end
 
 end
