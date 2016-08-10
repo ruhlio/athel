@@ -200,11 +200,18 @@ defmodule Athel.Nntp.SessionHandler do
     respond(:continue, {200, "Whatever dude"})
   end
 
-  def handle_call({other, _}, _sender, state) do
-    respond(:continue, {501, "Syntax error in #{other}"})
+  @check_argument_count(0)
+  def handle_call({"STARTTLS", []}, _sender, state) do
+    #TODO: 502 if authed
+    {:reply,
+     {:start_tls,
+      {382, "Slap that rubber on"},
+      {502, "Already protected"}},
+     state}
   end
 
-  # Socket recv/send
-
+  def handle_call({other, args}, _sender, state) do
+    respond(:continue, {501, "Unknown command #{other} #{args}"})
+  end
 
 end

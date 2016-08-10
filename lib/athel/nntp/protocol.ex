@@ -10,27 +10,36 @@ defmodule Athel.Nntp.Protocol do
   end
 
   defmodule State do
-    defstruct transport: nil, socket: nil, buffer: [], session_handler: nil
+    defstruct [:transport, :socket, :buffer, :session_handler, :opts]
+    @type t :: %State{transport: :ranch_transport,
+                      socket: :inet.socket,
+                      buffer: iodata,
+                      session_handler: pid,
+                      opts: Athel.Nntp.opts}
   end
 
-  @spec start_link(:ranch.ref, :inet.socket, module, list) :: {:ok, pid}
-  def start_link(ref, socket, transport, _opts) do
+  @spec start_link(:ranch.ref, :inet.socket, module, Athel.Nntp.opts) :: {:ok, pid}
+  def start_link(_ref, socket, transport, opts) do
+    # no accept_ack(ref) because connection always starts as plain tcp
     {:ok, session_handler} = SessionHandler.start_link()
-    pid = spawn_link(__MODULE__, :init, [ref, socket, transport, session_handler])
+    state = %State{socket: socket,
+                   transport: transport,
+                   session_handler: session_handler,
+                   buffer: [],
+                   opts: opts
+                  }
+    pid = spawn_link(__MODULE__, :init, [state])
     {:ok, pid}
   end
 
-  @spec start_link(:ranch.ref, :inet.socket, module, list) :: nil
-  def init(ref, socket, transport, session_handler) do
-    :ok = :ranch.accept_ack(ref)
-
+  @spec init(State.t) :: nil
+  def init(state) do
     Logger.info "Welcoming client"
-    state = %State{socket: socket, transport: transport, session_handler: session_handler}
     send_status(state, {200, "WELCOME FRIEND"})
     recv_command(state)
   end
 
-  def recv_command(state) do
+  defp recv_command(state) do
     {action, buffer} =
       case read_and_parse(state, &Parser.parse_command/1) do
         {:ok, command, buffer} -> {GenServer.call(state.session_handler, command), buffer}
@@ -49,9 +58,11 @@ defmodule Athel.Nntp.Protocol do
       {:recv_article, response} ->
         send_status(state, response)
         recv_article(state)
+      {:start_tls, good_response, bad_response} ->
+        start_tls(state, good_response, bad_response)
       {:quit, response} ->
         send_status(state, response)
-        :ok = state.transport.close(state.socket)
+        close(state)
     end
   end
 
@@ -72,25 +83,54 @@ defmodule Athel.Nntp.Protocol do
     recv_command(%{state | buffer: buffer})
   end
 
+  defp start_tls(state = %State{transport: :ranch_tcp}, good_response, _) do
+    send_status(state, good_response)
+
+    opts = [keyfile: state.opts[:keyfile],
+            certfile: state.opts[:certfile],
+            cacertfile: state.opts[:certfile],
+            verify: :verify_peer
+           ]
+    result =
+      with :ok <- :ssl.ssl_accept(state.socket, opts, state.opts[:timeout]),
+           {:ok, socket} <- :ssl.transport_accept(state.socket, state.opts[:timeout]),
+      do: {:ok, socket}
+
+    case result do
+      {:ok, socket} ->
+        %{state | transport: :ranch_ssl, socket: socket}
+        |> recv_command
+      {:error, reason} ->
+        Logger.error "Failed to accept SSL: #{inspect reason}"
+        close(state)
+    end
+  end
+
+  defp start_tls(state = %State{transport: :ranch_ssl}, _, bad_response) do
+    send_status(state, bad_response)
+    recv_command(state)
+  end
+
   defp read_and_parse(
-    state = %State{transport: transport, socket: socket, buffer: buffer}, parser) do
+    state = %State{transport: transport, socket: socket, buffer: buffer, opts: opts},
+    parser) do
     buffer =
       case buffer do
-        [] -> read(transport, socket, buffer)
-        "" -> read(transport, socket, [])
+        [] -> read(transport, socket, buffer, opts[:timeout])
+        "" -> read(transport, socket, [], opts[:timeout])
         _ -> buffer
       end
 
     case parser.(buffer) do
       :need_more ->
-        next_state = %{state | buffer: read(transport, socket, buffer)}
+        next_state = %{state | buffer: read(transport, socket, buffer, opts[:timeout])}
         read_and_parse(next_state, parser)
       other -> other
     end
   end
 
-  defp read(transport, socket, buffer) do
-    case transport.recv(socket, 0, 5_000) do
+  defp read(transport, socket, buffer, timeout) do
+    case transport.recv(socket, 0, timeout) do
       {:ok, received} -> [buffer, received]
       {:error, reason} ->
         raise CommunicationError, message: "Failed to read from client: #{reason}"
@@ -111,6 +151,13 @@ defmodule Athel.Nntp.Protocol do
       :ok -> ()
       {:error, reason} ->
         raise CommunicationError, message: "Failed to send status with body to client: #{reason}"
+    end
+  end
+
+  defp close(state) do
+    case state.transport.close(state.socket) do
+      :ok -> ()
+      {:error, reason} -> Logger.error "Failed to close connection: #{inspect reason}"
     end
   end
 

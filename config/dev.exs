@@ -41,3 +41,10 @@ config :athel, Athel.Repo,
   database: "athel_dev",
   hostname: "localhost",
   pool_size: 10
+
+config :athel, Athel.Nntp,
+  port: 8119,
+  pool_size: 10,
+  timeout: 5_000,
+  keyfile: Path.expand("../priv/testing.key", __DIR__),
+  cacertfile: Path.expand("../priv/testing.crt", __DIR__)

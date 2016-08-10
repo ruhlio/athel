@@ -20,8 +20,7 @@ defmodule Athel.Nntp.ServerTest do
   # setup's on_exit callback runs after the context (therefore the socket)
   # has already been cleaned up, so quit must be called manually
   defp quit(socket) do
-    :gen_tcp.send(socket, "QUIT\r\n")
-    {:ok, _} = :gen_tcp.recv(socket, 0)
+    send_recv(socket, "QUIT\r\n")
   end
 
   test "hello/goodbye", %{socket: setup_socket} do
@@ -181,9 +180,24 @@ defmodule Athel.Nntp.ServerTest do
     quit(socket)
   end
 
-  # test "STARTTLS", %{socket: socket} do
-  #   assert send_recv("STARTTLS\r\n") =~ status(382)
-  # end
+  test "STARTTLS", %{socket: socket} do
+    config = Application.fetch_env!(:athel, Athel.Nntp)
+    opts = [keyfile: config[:keyfile]]
+
+    assert send_recv(socket, "STARTTLS\r\n") =~ status(382)
+    {:ok, socket} = :ssl.connect(socket, opts)
+
+    assert send_recv(socket, "CAPABILITIES\r\n") =~ status(101)
+    assert send_recv(socket, "STARTTLS\r\n") =~ status(502)
+
+    quit(socket)
+  end
+
+  defp send_recv(socket = {:sslsocket, _, _}, payload) do
+    :ssl.send(socket, payload)
+    {:ok, resp} = :ssl.recv(socket, 0)
+    resp
+  end
 
   defp send_recv(socket, payload) do
     :gen_tcp.send(socket, payload)

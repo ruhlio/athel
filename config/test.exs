@@ -17,3 +17,10 @@ config :athel, Athel.Repo,
   database: "athel_test",
   hostname: "localhost",
   pool: Ecto.Adapters.SQL.Sandbox
+
+config :athel, Athel.Nntp,
+  port: 8119,
+  pool_size: 10,
+  timeout: 5_000,
+  keyfile: Path.expand("../priv/testing.key", __DIR__),
+  certfile: Path.expand("../priv/testing.crt", __DIR__)
