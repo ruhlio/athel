@@ -19,6 +19,13 @@ config :athel, Athel.Endpoint,
 # Do not print debug messages in production
 config :logger, level: :info
 
+config :athel, Athel.Nntp,
+  port: 119,
+  pool_size: 100,
+  timeout: 5_000,
+  keyfile: System.get_env("NNTP_SSL_KEY_PATH"),
+  certfile: System.get_env("NNTP_SSL_CERT_PATH")
+
 # ## SSL Support
 #
 # To get SSL working, you will need to add the `https` key
