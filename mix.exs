@@ -40,6 +40,7 @@ defmodule Athel.Mixfile do
       # added by hand
       {:timex, "~> 3.0"},
       {:timex_ecto, "~> 3.0"},
+      {:ex_multihash, "~> 1.0"},
       {:credo, "~> 0.4", only: [:dev, :test]}
     ]
   end

@@ -41,6 +41,28 @@ defmodule Athel.ModelCase do
     actual_message
   end
 
+  @spec assert_invalid(struct, atom, list | any, String.t) :: nil
+  def assert_invalid(struct, attr, invalid_values, error_message) when is_list(invalid_values) do
+    for value <- invalid_values do
+      assert_invalid(struct, attr, value, error_message)
+    end
+  end
+
+  def assert_invalid(struct, attr, invalid_value, error_message) do
+    changeset = struct.__struct__.changeset(struct, %{attr => invalid_value})
+    assert error(changeset, attr) =~ error_message
+  end
+
+  def assert_invalid_format(module, attr, invalid_values) do
+    assert_invalid(module, attr, invalid_values, "has invalid format")
+  end
+
+  def assert_too_long(module, attr, invalid_values) do
+    assert_invalid(module, attr, invalid_values, "should be at most")
+  end
+
+  def assert_too_long
+
   @spec setup_models(non_neg_integer) :: Athel.Group.t
   def setup_models(article_count \\ 0) do
     group = Athel.Repo.insert! %Athel.Group {
@@ -51,22 +73,20 @@ defmodule Athel.ModelCase do
       high_watermark: 0
     }
 
-    unless article_count == 0 do
-      for index <- 0..(article_count - 1) do
-        changeset =
-          Athel.Article.changeset(%Athel.Article{},
-            %{
-              message_id: "0#{index}@test.com",
-              from: "Me",
-              subject: "Talking to myself",
-              date: Timex.now(),
-              reference: nil,
-              content_type: "text/plain",
-              body: "LET'S ROCK OUT FOR JESUS & AMERICA"
-            })
-            |> Ecto.Changeset.put_assoc(:groups, [group])
-        Athel.Repo.insert! changeset
-      end
+    for index <- 0..max(article_count - 1, 0) do
+      changeset =
+        Athel.Article.changeset(%Athel.Article{},
+          %{
+            message_id: "0#{index}@test.com",
+            from: "Me",
+            subject: "Talking to myself",
+            date: Timex.now(),
+            reference: nil,
+            content_type: "text/plain",
+            body: "LET'S ROCK OUT FOR JESUS & AMERICA"
+          })
+          |> Ecto.Changeset.put_assoc(:groups, [group])
+      Athel.Repo.insert! changeset
     end
 
     group
