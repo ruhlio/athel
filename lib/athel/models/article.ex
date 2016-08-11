@@ -14,6 +14,7 @@ defmodule Athel.Article do
     field :subject, :string
     field :date, Timex.Ecto.DateTime
     field :content_type, :string
+    #TODO: change to array
     field :body, :string
 
     many_to_many :groups, Group,

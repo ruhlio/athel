@@ -3,13 +3,13 @@ defmodule Athel.UserTest do
 
   alias Athel.User
 
-  @valid_attrs %{username: "he_man",
-                 email: "me@him.who",
-                 encrypted_password: "knarly",
-                 salt: "WHEN"}
-
   test "valid" do
-    assert User.changeset(%User{}, @valid_attrs).valid?
+    {:ok, hash} = Multihash.encode(:sha2_512, :crypto.hash(:sha512, "knarly"))
+    attrs = %{username: "he_man",
+              email: "me@him.who",
+              hashed_password: hash,
+              salt: "WHENWILLIEVER"}
+    assert User.changeset(%User{}, attrs).valid?
   end
 
   test "username" do
@@ -30,6 +30,11 @@ defmodule Athel.UserTest do
     |> Enum.take(200)
     |> Enum.join
     assert_too_long(%User{}, :email, "#{superlong}@bob.com")
+  end
+
+  test "hashed password" do
+    assert_invalid(%User{}, :hashed_password,
+      [<<0xf>>, <<0x63, 0x22, 0x44>>], "invalid multihash")
   end
 
 end
