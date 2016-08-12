@@ -5,6 +5,8 @@ defmodule Athel.Nntp.ServerTest do
   alias Athel.Nntp.Formattable
 
   setup do
+    {:ok, _} = AuthService.create_user("jimbo", "bigboy@pig.farm", "password")
+
     socket = connect()
     {:ok, _welcome} = :gen_tcp.recv(socket, 0)
 
@@ -168,6 +170,8 @@ defmodule Athel.Nntp.ServerTest do
       body: "YOU'RE ONE OF THEM"
     }
 
+    assert send_recv(socket, "POST\r\n") =~ status(440)
+    login(socket)
     assert send_recv(socket, "POST\r\n") =~ status(340)
     assert send_recv(socket, Formattable.format(new_article)) =~ status(240)
 
@@ -198,8 +202,6 @@ defmodule Athel.Nntp.ServerTest do
   end
 
   test "AUTHINFO", %{socket: socket} do
-    {:ok, _} = AuthService.create_user("jimbo", "bigboy@pig.farm", "password")
-
     #assert send_recv(socket, "AUTHINFO USER jimbo\r\n") =~ status(483)
     assert send_recv(socket, "STARTTLS\r\n") =~ status(382)
     socket = upgrade_to_ssl(socket)
@@ -212,8 +214,7 @@ defmodule Athel.Nntp.ServerTest do
     assert send_recv(socket, "AUTHINFO PASS hwat\r\n") =~ status(481)
     assert send_recv(socket, "AUTHINFO PASS hwat\r\n") =~ status(482)
 
-    assert send_recv(socket, "AUTHINFO USER jimbo\r\n") =~ status(381)
-    assert send_recv(socket, "AUTHINFO PASS password\r\n") =~ status(281)
+    login(socket)
     refute send_recv(socket, "CAPABILITIES\r\n") =~ "AUTHINFO"
     assert send_recv(socket, "AUTHINFO PASS dude\r\n") =~ status(502)
     assert send_recv(socket, "AUTHINFO USER jimbo\r\n") =~ status(502)
@@ -238,6 +239,11 @@ defmodule Athel.Nntp.ServerTest do
     opts = [keyfile: config[:keyfile]]
     {:ok, socket} = :ssl.connect(socket, opts)
     socket
+  end
+
+  defp login(socket) do
+    assert send_recv(socket, "AUTHINFO USER jimbo\r\n") =~ status(381)
+    assert send_recv(socket, "AUTHINFO PASS password\r\n") =~ status(281)
   end
 
   # handle single or multiline

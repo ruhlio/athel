@@ -8,19 +8,14 @@ defmodule Athel.Nntp.SessionHandler do
   import Athel.Nntp.Defs
   alias Athel.{Repo, AuthService, Group, Article, User}
 
-  defmodule State do
-    defstruct [:group_name, :article_index, :authentication]
-    @type t :: %State{group_name: String.t,
-                      article_index: non_neg_integer,
-                      authentication: String.t | User.t}
-  end
-
   def start_link do
     GenServer.start_link(__MODULE__, :ok)
   end
 
   def init(:ok) do
-    {:ok, %State{}}
+    {:ok, %{group_name: nil,
+            article_index: nil,
+            authentication: nil}}
   end
 
   # Command handling
@@ -192,9 +187,12 @@ defmodule Athel.Nntp.SessionHandler do
     end
   end
 
-  check_argument_count("POST", 0)
-  def handle_call({"POST", []}, _sender, state) do
-    respond(:recv_article, {340, "FIRE AWAY"})
+  command "POST", :post,
+    max_args: 0,
+    auth: [required: true, response: {440, "Authentication required"}]
+
+  def post do
+    {:recv_article, {340, "FIRE AWAY"}}
   end
 
   def handle_call({:article, headers, body}, _sender, state) do
