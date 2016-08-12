@@ -68,7 +68,7 @@ defmodule Athel.Nntp.ServerTest do
   end
 
   test "CAPABILITIES", %{socket: socket} do
-    assert send_recv(socket, "CAPABILITIES\r\n") == "101 Listing capabilities\r\nVERSION 2\r\nPOST\r\nLIST ACTIVE NEWGROUPS\r\nSTARTTLS\r\n.\r\n"
+    assert send_recv(socket, "CAPABILITIES\r\n") == "101 Listing capabilities\r\nVERSION 2\r\nPOST\r\nLIST ACTIVE NEWGROUPS\r\nSTARTTLS\r\nAUTHINFO USER\r\n.\r\n"
 
     quit(socket)
   end
@@ -214,6 +214,7 @@ defmodule Athel.Nntp.ServerTest do
 
     assert send_recv(socket, "AUTHINFO USER jimbo\r\n") =~ status(381)
     assert send_recv(socket, "AUTHINFO PASS password\r\n") =~ status(281)
+    refute send_recv(socket, "CAPABILITIES\r\n") =~ "AUTHINFO"
     assert send_recv(socket, "AUTHINFO PASS dude\r\n") =~ status(502)
     assert send_recv(socket, "AUTHINFO USER jimbo\r\n") =~ status(502)
 

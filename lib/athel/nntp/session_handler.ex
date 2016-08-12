@@ -32,6 +32,12 @@ defmodule Athel.Nntp.SessionHandler do
   check_argument_count("CAPABILITIES", 0)
   def handle_call({"CAPABILITIES", _}, _sender, state) do
     capabilities = ["VERSION 2", "POST", "LIST ACTIVE NEWGROUPS", "STARTTLS"]
+    capabilities = if is_nil(state.authentication) || is_binary(state.authentication) do
+      capabilities ++ ["AUTHINFO USER"]
+    else
+      capabilities
+    end
+
     respond(:continue, {101, "Listing capabilities", capabilities})
   end
 
