@@ -1,7 +1,7 @@
 defmodule Athel.Nntp.ServerTest do
   use Athel.ModelCase
 
-  alias Athel.{Group, Article}
+  alias Athel.{Group, Article, AuthService}
   alias Athel.Nntp.Formattable
 
   setup do
@@ -46,7 +46,9 @@ defmodule Athel.Nntp.ServerTest do
       "QUIT" => 0,
       "LIST" => 2,
       "LISTGROUP" => 2,
-      "GROUP" => 1
+      "GROUP" => 1,
+      "STARTTLS" => 0,
+      "AUTHINFO" => 2
     }
 
     for {command, argument_count} <- argument_counts do
@@ -57,6 +59,11 @@ defmodule Athel.Nntp.ServerTest do
       assert send_recv(socket, "#{command} #{arguments}\r\n") == "501 Too many arguments\r\n"
     end
 
+    quit(socket)
+  end
+
+  test "no such command", %{socket: socket} do
+    assert send_recv(socket, "SAY MY NAMe\r\n") =~ status(501)
     quit(socket)
   end
 
@@ -181,14 +188,34 @@ defmodule Athel.Nntp.ServerTest do
   end
 
   test "STARTTLS", %{socket: socket} do
-    config = Application.fetch_env!(:athel, Athel.Nntp)
-    opts = [keyfile: config[:keyfile]]
-
     assert send_recv(socket, "STARTTLS\r\n") =~ status(382)
-    {:ok, socket} = :ssl.connect(socket, opts)
+    socket = upgrade_to_ssl(socket)
 
     assert send_recv(socket, "CAPABILITIES\r\n") =~ status(101)
     assert send_recv(socket, "STARTTLS\r\n") =~ status(502)
+
+    quit(socket)
+  end
+
+  test "AUTHINFO", %{socket: socket} do
+    {:ok, _} = AuthService.create_user("jimbo", "bigboy@pig.farm", "password")
+
+    #assert send_recv(socket, "AUTHINFO USER jimbo\r\n") =~ status(483)
+    assert send_recv(socket, "STARTTLS\r\n") =~ status(382)
+    socket = upgrade_to_ssl(socket)
+
+    assert send_recv(socket, "AUTHINFO PASS password\r\n") =~ status(482)
+    assert send_recv(socket, "AUTHINFO USER terry\r\n") =~ status(381)
+    assert send_recv(socket, "AUTHINFO PASS password\r\n") =~ status(481)
+
+    assert send_recv(socket, "AUTHINFO USER jimbo\r\n") =~ status(381)
+    assert send_recv(socket, "AUTHINFO PASS hwat\r\n") =~ status(481)
+    assert send_recv(socket, "AUTHINFO PASS hwat\r\n") =~ status(482)
+
+    assert send_recv(socket, "AUTHINFO USER jimbo\r\n") =~ status(381)
+    assert send_recv(socket, "AUTHINFO PASS password\r\n") =~ status(281)
+    assert send_recv(socket, "AUTHINFO PASS dude\r\n") =~ status(502)
+    assert send_recv(socket, "AUTHINFO USER jimbo\r\n") =~ status(502)
 
     quit(socket)
   end
@@ -203,6 +230,13 @@ defmodule Athel.Nntp.ServerTest do
     :gen_tcp.send(socket, payload)
     {:ok, resp} = :gen_tcp.recv(socket, 0)
     resp
+  end
+
+  defp upgrade_to_ssl(socket) do
+    config = Application.fetch_env!(:athel, Athel.Nntp)
+    opts = [keyfile: config[:keyfile]]
+    {:ok, socket} = :ssl.connect(socket, opts)
+    socket
   end
 
   # handle single or multiline

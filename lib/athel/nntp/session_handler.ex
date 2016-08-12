@@ -6,10 +6,13 @@ defmodule Athel.Nntp.SessionHandler do
 
   require Athel.Nntp.Defs
   import Athel.Nntp.Defs
-  alias Athel.{Repo, Group, Article}
+  alias Athel.{Repo, AuthService, Group, Article, User}
 
   defmodule State do
-    defstruct group_name: nil, article_index: nil
+    defstruct [:group_name, :article_index, :authentication]
+    @type t :: %State{group_name: String.t,
+                      article_index: non_neg_integer,
+                      authentication: String.t | User.t}
   end
 
   def start_link do
@@ -200,7 +203,7 @@ defmodule Athel.Nntp.SessionHandler do
     respond(:continue, {200, "Whatever dude"})
   end
 
-  @check_argument_count(0)
+  check_argument_count("STARTTLS", 0)
   def handle_call({"STARTTLS", []}, _sender, state) do
     #TODO: 502 if authed
     {:reply,
@@ -210,8 +213,39 @@ defmodule Athel.Nntp.SessionHandler do
      state}
   end
 
+  check_argument_count("AUTHINFO", 2)
+  def handle_call({"AUTHINFO", ["USER", username]}, _sender, state) do
+    if is_map(state.authentication) do
+      respond(:continue, {502, "Already authenticated"})
+    else
+      {:reply,
+       {:continue, {381, "PROCEED"}},
+       %{state | authentication: username}}
+    end
+  end
+
+  def handle_call({"AUTHINFO", ["PASS", password]}, _sender, state) do
+    case state.authentication do
+      nil ->
+        respond(:continue, {482, "Call `AUTHINFO USER` first"})
+      %User{} ->
+        respond(:continue, {502, "Already authenticated"})
+      username ->
+        case AuthService.login(username, password) do
+          {:ok, user} ->
+            {:reply,
+             {:continue, {281, "Authentication successful"}},
+             %{state | authentication: user}}
+          :invalid_credentials ->
+            {:reply,
+             {:continue, {481, "No bueno"}},
+             %{state | authentication: nil}}
+        end
+    end
+  end
+
   def handle_call({other, args}, _sender, state) do
-    respond(:continue, {501, "Unknown command #{other} #{args}"})
+    respond(:continue, {501, "Unknown command/args #{other} #{args}"})
   end
 
 end
