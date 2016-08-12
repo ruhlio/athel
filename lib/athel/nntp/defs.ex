@@ -11,24 +11,41 @@ defmodule Athel.Nntp.Defs do
     max_args = Keyword.get(opts, :max_args, 0)
     auth = Keyword.get(opts, :auth, [required: false])
 
+    max_args_clause = quote do
+      length(args) > unquote(max_args) ->
+        {:reply, {:continue, {501, "Too many arguments"}}, state}
+    end
+
+    auth_clause = quote do
+      !is_authenticated(state) ->
+        {:reply, {:continue, unquote(auth[:response])}, state}
+    end
+
+    action_clause = quote do
+      true ->
+        case apply(__MODULE__, unquote(function), args) do
+          {action, response} ->
+            {:reply, {action, response}, state}
+          {action, response, state_updates} ->
+            new_state = Map.merge(state, state_updates)
+            {:reply, {action, response}, new_state}
+        end
+    end
+
+    clauses = if auth[:required] do
+      [max_args_clause, auth_clause, action_clause]
+    else
+      [max_args_clause, action_clause]
+    end |> List.flatten
+
     quote do
       def handle_call({unquote(name), args}, _sender, state) do
         cond do
-          length(args) > unquote(max_args) ->
-            {:reply, {:continue, {501, "Too many arguments"}}, state}
-          unquote(auth[:required]) && !is_authenticated(state) ->
-            {:reply, {:continue, unquote(auth[:response])}, state}
-          true ->
-            case apply(__MODULE__, unquote(function), args) do
-              {action, response} ->
-                {:reply, {action, response}, state}
-              {action, response, state_updates} ->
-                new_state = Map.merge(state, state_updates)
-                {:reply, {action, response}, new_state}
-            end
+          unquote(clauses)
         end
       end
     end
+
   end
 
   def is_authenticated(%{authentication: %Athel.User{}}), do: true
