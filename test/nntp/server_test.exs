@@ -124,7 +124,7 @@ defmodule Athel.Nntp.ServerTest do
     group = setup_models(2)
     Repo.update Group.changeset(group, %{low_watermark: 5, high_watermark: 10})
 
-    assert send_recv(socket, "GROUP\r\n") == "501 Syntax error: group name must be provided\r\n"
+    assert send_recv(socket, "GROUP\r\n") =~ status(501)
     assert send_recv(socket, "GROUP asinine.debate\r\n") =~ status(411)
     assert send_recv(socket, "GROUP fun.times\r\n") == "211 5 5 10 fun.times\r\n"
     # verify selected group was set for session
@@ -198,6 +198,12 @@ defmodule Athel.Nntp.ServerTest do
     assert send_recv(socket, "CAPABILITIES\r\n") =~ status(101)
     assert send_recv(socket, "STARTTLS\r\n") =~ status(502)
 
+    quit(socket)
+
+    socket = connect()
+    {:ok, _welcome} = :gen_tcp.recv(socket, 0)
+    login(socket)
+    assert send_recv(socket, "STARTTLS\r\n") =~ status(502)
     quit(socket)
   end
 

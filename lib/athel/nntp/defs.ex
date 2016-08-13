@@ -23,12 +23,18 @@ defmodule Athel.Nntp.Defs do
 
     action_clause = quote do
       true ->
-        case apply(__MODULE__, unquote(function), args) do
-          {action, response} ->
-            {:reply, {action, response}, state}
-          {action, response, state_updates} ->
-            new_state = Map.merge(state, state_updates)
-            {:reply, {action, response}, new_state}
+        try do
+          case __MODULE__.unquote(function)(args, state) do
+            {action, response} ->
+              {:reply, {action, response}, state}
+            {action, response, state_updates} ->
+              new_state = Map.merge(state, state_updates)
+              {:reply, {action, response}, new_state}
+          end
+        rescue
+          _ in FunctionClauseError ->
+            Logger.info("Invalid arguments passed to '#{unquote(name)}': #{inspect args}")
+            {:reply, {:error, {501, "Invalid #{unquote(name)} arguments"}}, state}
         end
     end
 

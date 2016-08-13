@@ -58,7 +58,7 @@ defmodule Athel.Nntp.Protocol do
       {:recv_article, response} ->
         send_status(state, response)
         recv_article(state)
-      {:start_tls, good_response, bad_response} ->
+      {:start_tls, {good_response, bad_response}} ->
         start_tls(state, good_response, bad_response)
       {:quit, response} ->
         send_status(state, response)
@@ -89,8 +89,7 @@ defmodule Athel.Nntp.Protocol do
     opts = [keyfile: state.opts[:keyfile],
             certfile: state.opts[:certfile],
             cacertfile: state.opts[:certfile],
-            verify: :verify_peer
-           ]
+            verify: :verify_peer]
     result =
       with :ok <- :ssl.ssl_accept(state.socket, opts, state.opts[:timeout]),
            {:ok, socket} <- :ssl.transport_accept(state.socket, state.opts[:timeout]),

@@ -24,112 +24,96 @@ defmodule Athel.Nntp.SessionHandler do
     quote do: {:reply, {unquote(type), unquote(response)}, var!(state)}
   end
 
-  check_argument_count("CAPABILITIES", 0)
-  def handle_call({"CAPABILITIES", _}, _sender, state) do
+  command "CAPABILITIES", :capabilities, max_args: 0
+  def capabilities([], state) do
     capabilities = ["VERSION 2", "POST", "LIST ACTIVE NEWGROUPS", "STARTTLS"]
-    capabilities = if is_nil(state.authentication) || is_binary(state.authentication) do
-      capabilities ++ ["AUTHINFO USER"]
-    else
+    capabilities = if is_authenticated(state) do
       capabilities
+    else
+      capabilities ++ ["AUTHINFO USER"]
     end
 
-    respond(:continue, {101, "Listing capabilities", capabilities})
+    {:continue, {101, "Listing capabilities", capabilities}}
   end
 
-  check_argument_count("QUIT", 0)
-  def handle_call({"QUIT", _}, _sender, state) do
-    respond(:quit, {205, "SEE YA"})
+  command "QUIT", :quit, max_args: 0
+  def quit([], _) do
+    {:quit, {205, "SEE YA"}}
   end
 
   #TODO: LIST ACTIVE with wildmat
-  check_argument_count("LIST", 2)
-  def handle_call({"LIST", []}, sender, state) do
-    handle_call({"LIST", ["ACTIVE"]}, sender, state)
+  command "LIST", :list_groups, max_args: 2
+  def list_groups([], state) do
+    list_groups(["ACTIVE"], state)
   end
 
   @lint {Credo.Check.Refactor.PipeChainStart, false}
-  def handle_call({"LIST", ["ACTIVE"]}, _sender, state) do
+  def list_groups(["ACTIVE"], _) do
     groups = from(g in Group, order_by: :name)
     |> Repo.all
     |> Enum.map(&("#{&1.name} #{&1.high_watermark} #{&1.low_watermark} #{&1.status}"))
-    respond(:continue, {215, "Listing groups", groups})
+    {:continue, {215, "Listing groups", groups}}
   end
 
   @lint {Credo.Check.Refactor.PipeChainStart, false}
-  def handle_call({"LIST", ["NEWSGROUPS"]}, _sender, state) do
+  def list_groups(["NEWSGROUPS"], _) do
     groups = from(g in Group, order_by: :name)
     |> Repo.all
     |> Enum.map(&("#{&1.name} #{&1.description}"))
-    respond(:continue, {215, "Listing group descriptions", groups})
+    {:continue, {215, "Listing group descriptions", groups}}
   end
 
-  def handle_call({"LIST", _}, _sender, state) do
-    respond(:error, {501, "Invalid LIST arguments"})
-  end
-
-  check_argument_count("LISTGROUP", 2)
-  def handle_call({"LISTGROUP", []}, sender, state) do
+  command "LISTGROUP", :list_articles, max_args: 2
+  def list_articles([], state) do
     case state.group_name do
-      nil -> respond(:continue, {412, "Select a group first, ya dingus"})
-      group_name -> handle_call({"LISTGROUP", [group_name, "1-"]}, sender, state)
+      nil -> {:continue, {412, "Select a group first, ya dingus"}}
+      group_name -> list_articles([group_name, "1-"], state)
     end
   end
 
-  def handle_call({"LISTGROUP", [group_name]}, sender, state) do
-    handle_call({"LISTGROUP", [group_name, "1-"]}, sender, state)
+  def list_articles([group_name], state) do
+    list_articles([group_name, "1-"], state)
   end
 
-  def handle_call({"LISTGROUP", [group_name, range]}, _sender, state) do
+  def list_articles([group_name, range], _) do
     case Repo.get_by(Group, name: group_name) do
-      nil -> respond(:continue, {411, "No such group"})
+      nil -> {:continue, {411, "No such group"}}
       group ->
         case Regex.run(~r/(\d+)(-(\d+)?)?/, range) do
           [_, index] ->
             {index, _} = Integer.parse(index)
             group
             |> Article.by_index(index)
-            |> listgroup_response(group, state)
+            |> list_articles_response(group)
           [_, lower_bound, _unbounded] ->
             {lower_bound, _} = Integer.parse(lower_bound)
             group
             |> Article.by_index(lower_bound, :infinity)
-            |> listgroup_response(group, state)
+            |> list_articles_response(group)
           [_, lower_bound, _, upper_bound] ->
             {lower_bound, _} = Integer.parse(lower_bound)
             {upper_bound, _} = Integer.parse(upper_bound)
             group
             |> Article.by_index(lower_bound, upper_bound)
-            |> listgroup_response(group, state)
+            |> list_articles_response(group)
           nil ->
-            respond(:error, {501, "Syntax error in range argument"})
+            {:error, {501, "Syntax error in range argument"}}
         end
     end
   end
 
-  defp listgroup_response(query, group, state) do
+  defp list_articles_response(query, group) do
     indexes = query |> Repo.all |> Enum.map(fn {index, _article} -> index end)
-    {
-      :reply,
-      {:continue, {211, format_group_status(group), indexes}},
-      %{state | group_name: group.name}
-    }
+    {:continue, {211, format_group_status(group), indexes}, %{group_name: group.name}}
   end
 
-  check_argument_count("GROUP", 1)
-  def handle_call({"GROUP", []}, _sender, state) do
-    respond(:error, {501, "Syntax error: group name must be provided"})
-  end
-
-  def handle_call({"GROUP", [group_name]}, _sender, state) do
+  command "GROUP", :select_group, max_args: 1
+  def select_group([group_name], _) do
     case Repo.get_by(Group, name: group_name) do
       nil ->
-        respond(:continue, {411, "No such group"})
+        {:continue, {411, "No such group"}}
       group ->
-        {
-          :reply,
-          {:continue, {211, format_group_status(group)}},
-          %{state | group_name: group.name}
-        }
+        {:continue, {211, format_group_status(group)}, %{group_name: group.name}}
     end
   end
 
@@ -137,15 +121,15 @@ defmodule Athel.Nntp.SessionHandler do
     "#{group.high_watermark - group.low_watermark} #{group.low_watermark} #{group.high_watermark} #{group.name}"
   end
 
-  check_argument_count("ARTICLE", 1)
-  def handle_call({"ARTICLE", []}, sender, state) do
+  command "ARTICLE", :get_article, max_args: 1
+  def get_article([], state) do
     case state.article_index do
-      nil -> respond(:continue, {420, "BLAISE IT"})
-      article_index -> handle_call({"ARTICLE", [article_index]}, sender, state)
+      nil -> {:continue, {420, "BLAISE IT"}}
+      article_index -> get_article([article_index], state)
     end
   end
 
-  def handle_call({"ARTICLE", [id]}, _sender, state) do
+  def get_article([id], state) do
     message_id =
       case Regex.run(~r/^<(.*)>$/, to_string(id)) do
         [_, id] -> id
@@ -156,16 +140,15 @@ defmodule Athel.Nntp.SessionHandler do
       !is_nil(message_id) ->
         case Repo.get(Article, message_id) do
           nil ->
-            respond(:continue, {430, "No such article"})
+            {:continue, {430, "No such article"}}
           article ->
-            respond(:continue, {220, "0 #{id}", article |> Repo.preload(:groups)})
+            {:continue, {220, "0 #{id}", article |> Repo.preload(:groups)}}
         end
       to_string(id) =~ ~r/^\d+$/ ->
         case state.group_name do
-          nil -> respond(:continue, {412, "You ain't touchin none my articles till you touch one of my groups"})
+          nil -> {:continue, {412, "You ain't touchin none my articles till you touch one of my groups"}}
           group_name ->
             {index, _} = if is_number(id), do: {id, ()}, else: Integer.parse(id)
-            state = %{state | article_index: index}
             group = Repo.get_by(Group, name: group_name)
             article = group
             |> Article.by_index(index)
@@ -173,25 +156,26 @@ defmodule Athel.Nntp.SessionHandler do
 
             cond do
               is_nil(article) && is_number(id) ->
-                respond(:continue, {420, "BLAISE IT"})
+                {:continue, {420, "BLAISE IT"}}
               is_nil(article) ->
-                respond(:continue, {423, "Bad index bro"})
+                {:continue, {423, "Bad index bro"}}
               true ->
                 {_, article} = article
-                respond(:continue, {220, "#{index} <#{article.message_id}>",
-                                    article |> Repo.preload(:groups)})
+                {:continue,
+                 {220, "#{index} <#{article.message_id}>",
+                  article |> Repo.preload(:groups)},
+                 %{article_index: index}}
             end
         end
       true ->
-        respond(:error, {501, "Invalid message id/index"})
+        {:error, {501, "Invalid message id/index"}}
     end
   end
 
   command "POST", :post,
     max_args: 0,
     auth: [required: true, response: {440, "Authentication required"}]
-
-  def post do
+  def post([], _) do
     {:recv_article, {340, "FIRE AWAY"}}
   end
 
@@ -203,53 +187,47 @@ defmodule Athel.Nntp.SessionHandler do
     end
   end
 
-  def handle_call({"MODE", ["READER"]}, _sender, state) do
-    respond(:continue, {200, "Whatever dude"})
+  command "MODE", :mode, max_args: 1
+  def mode(["READER"], _) do
+    {:continue, {200, "Whatever dude"}}
   end
 
-  check_argument_count("STARTTLS", 0)
-  def handle_call({"STARTTLS", []}, _sender, state) do
-    #TODO: 502 if authed
-    {:reply,
-     {:start_tls,
-      {382, "Slap that rubber on"},
-      {502, "Already protected"}},
-     state}
-  end
-
-  check_argument_count("AUTHINFO", 2)
-  def handle_call({"AUTHINFO", ["USER", username]}, _sender, state) do
-    if is_map(state.authentication) do
-      respond(:continue, {502, "Already authenticated"})
+  command "STARTTLS", :start_tls, max_args: 0
+  def start_tls([], state) do
+    if is_authenticated(state) do
+      {:continue, {502, "But we're already on a first name basis..."}}
     else
-      {:reply,
-       {:continue, {381, "PROCEED"}},
-       %{state | authentication: username}}
+      {:start_tls, {{382, "Slap that rubber on"}, {502, "Already protected"}}}
     end
   end
 
-  def handle_call({"AUTHINFO", ["PASS", password]}, _sender, state) do
+  command "AUTHINFO", :login, max_args: 2
+  def login(["USER", username], state) do
+    if is_authenticated(state) do
+      {:continue, {502, "Already authenticated"}}
+    else
+      {:continue, {381, "PROCEED"}, %{authentication: username}}
+    end
+  end
+
+  def login(["PASS", password], state) do
     case state.authentication do
       nil ->
-        respond(:continue, {482, "Call `AUTHINFO USER` first"})
+        {:continue, {482, "Call `AUTHINFO USER` first"}}
       %User{} ->
-        respond(:continue, {502, "Already authenticated"})
+        {:continue, {502, "Already authenticated"}}
       username ->
         case AuthService.login(username, password) do
           {:ok, user} ->
-            {:reply,
-             {:continue, {281, "Authentication successful"}},
-             %{state | authentication: user}}
+            {:continue, {281, "Authentication successful"}, %{authentication: user}}
           :invalid_credentials ->
-            {:reply,
-             {:continue, {481, "No bueno"}},
-             %{state | authentication: nil}}
+            {:continue, {481, "No bueno"}, %{authentication: nil}}
         end
     end
   end
 
-  def handle_call({other, args}, _sender, state) do
-    respond(:continue, {501, "Unknown command/args #{other} #{args}"})
+  def handle_call({other_command, _}, _sender, state) do
+    respond(:continue, {501, "Unknown command #{other_command}"})
   end
 
 end
