@@ -47,9 +47,10 @@ defmodule Athel.NntpService do
     |> offset(^lower_bound)
     |> order_by(:date)
     |> select([a, i], {i.index, a})
-# subqueries with fragments in the `select` not supported, whole query must
-# be a fragment to be joined on
-# make `row_number()` zero-indexed to match up with `offset`
+    # subqueries with fragments in the `select` not supported, whole query must
+    # be a fragment to be joined on
+    # make `row_number()` zero-indexed to match up with `offset`
+    #see: https://github.com/elixir-ecto/ecto/issues/1416
     |> join(:inner, [a], i in fragment("""
     SELECT (row_number() OVER (ORDER BY a.date) - 1) as index,
            a.message_id as message_id
