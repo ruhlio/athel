@@ -16,12 +16,6 @@ defmodule Athel.Nntp.SessionHandler do
             authentication: nil}}
   end
 
-  # Command handling
-
-  defmacrop respond(type, response) do
-    quote do: {:reply, {unquote(type), unquote(response)}, var!(state)}
-  end
-
   command "CAPABILITIES", :capabilities, max_args: 0
   def capabilities([], state) do
     capabilities = ["VERSION 2", "POST", "LIST ACTIVE NEWGROUPS", "STARTTLS", "IHAVE"]
@@ -237,7 +231,7 @@ defmodule Athel.Nntp.SessionHandler do
   end
 
   def handle_call({other_command, _}, _sender, state) do
-    respond(:continue, {501, "Unknown command #{other_command}"})
+    {:reply, {:continue, {501, "Unknown command #{other_command}"}}, state}
   end
 
   @message_id_format ~r/^<([a-zA-Z0-9$.]{2,128}@[a-zA-Z0-9.-]{2,63})>$/
