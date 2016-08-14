@@ -1,8 +1,7 @@
 defmodule Athel.GroupController do
   use Athel.Web, :controller
 
-  alias Athel.Group
-  alias Athel.Article
+  alias Athel.{MessageBoardService, Group, Article}
 
   def index(conn, _params) do
     groups = Repo.all(Group)
@@ -25,17 +24,16 @@ defmodule Athel.GroupController do
       body: body,
       content_type: "text/plain",
     }
-    changeset = Article.topic_changeset(%Article{}, [group], article_changes)
 
-    if changeset.valid? do
-      article = Repo.insert!(changeset)
-      conn
-      |> put_flash(:success, "Article posted")
-      |> redirect(to: article_path(conn, :show, name, article.message_id))
-    else
-      conn
-      |> put_flash(:error, "Please correct the errors and resubmit")
-      |> render("show.html", group: group, article_changeset: changeset)
+    case MessageBoardService.new_topic([group], article_changes) do
+      {:ok, article} ->
+        conn
+        |> put_flash(:success, "Article posted")
+        |> redirect(to: article_path(conn, :show, name, article.message_id))
+      {:error, changeset} ->
+        conn
+        |> put_flash(:error, "Please correct the errors and resubmit")
+        |> render("show.html", group: group, article_changeset: changeset)
     end
   end
 

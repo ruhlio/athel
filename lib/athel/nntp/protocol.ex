@@ -55,9 +55,9 @@ defmodule Athel.Nntp.Protocol do
       {:error, response} ->
         send_status(state, response)
         recv_command(state)
-      {:recv_article, response} ->
+      {{:recv_article, type}, response} ->
         send_status(state, response)
-        recv_article(state)
+        recv_article(type, state)
       {:start_tls, {good_response, bad_response}} ->
         start_tls(state, good_response, bad_response)
       {:quit, response} ->
@@ -66,17 +66,18 @@ defmodule Athel.Nntp.Protocol do
     end
   end
 
-  defp recv_article(state) do
-    article =
+  defp recv_article(type, state) do
+    message =
       with {:ok, headers, buffer} <- read_and_parse(state, &Parser.parse_headers/1),
-           {:ok, body, buffer} <- read_and_parse(
-             %{state | buffer: buffer}, &Parser.parse_multiline/1),
-      do: {{:article, headers, body}, buffer}
+           {:ok, body, buffer} <- read_and_parse(%{state | buffer: buffer},
+             &Parser.parse_multiline/1),
+             message_name <- "#{type}_article" |> String.to_atom,
+      do: {{message_name, headers, body}, buffer}
 
     {response, buffer} =
-      case article do
+      case message do
         {:error, type} -> {{501, "Syntax error in #{type}"}, []}
-        {article, buffer} -> {GenServer.call(state.session_handler, article), buffer}
+        {message, buffer} -> {GenServer.call(state.session_handler, message), buffer}
       end
 
     send_status(state, response)

@@ -2,11 +2,9 @@ defmodule Athel.Nntp.SessionHandler do
   use GenServer
 
   require Logger
-  import Ecto.Query
-
   require Athel.Nntp.Defs
   import Athel.Nntp.Defs
-  alias Athel.{Repo, AuthService, Group, Article, User}
+  alias Athel.{Repo, AuthService, MessageBoardService, Group, Article, User}
 
   def start_link do
     GenServer.start_link(__MODULE__, :ok)
@@ -47,18 +45,14 @@ defmodule Athel.Nntp.SessionHandler do
     list_groups(["ACTIVE"], state)
   end
 
-  @lint {Credo.Check.Refactor.PipeChainStart, false}
   def list_groups(["ACTIVE"], _) do
-    groups = from(g in Group, order_by: :name)
-    |> Repo.all
+    groups = MessageBoardService.get_groups()
     |> Enum.map(&("#{&1.name} #{&1.high_watermark} #{&1.low_watermark} #{&1.status}"))
     {:continue, {215, "Listing groups", groups}}
   end
 
-  @lint {Credo.Check.Refactor.PipeChainStart, false}
   def list_groups(["NEWSGROUPS"], _) do
-    groups = from(g in Group, order_by: :name)
-    |> Repo.all
+    groups = MessageBoardService.get_groups()
     |> Enum.map(&("#{&1.name} #{&1.description}"))
     {:continue, {215, "Listing group descriptions", groups}}
   end
@@ -83,18 +77,18 @@ defmodule Athel.Nntp.SessionHandler do
           [_, index] ->
             {index, _} = Integer.parse(index)
             group
-            |> Article.by_index(index)
+            |> MessageBoardService.get_article_by_index(index)
             |> list_articles_response(group)
           [_, lower_bound, _unbounded] ->
             {lower_bound, _} = Integer.parse(lower_bound)
             group
-            |> Article.by_index(lower_bound, :infinity)
+            |> MessageBoardService.get_article_by_index(lower_bound, :infinity)
             |> list_articles_response(group)
           [_, lower_bound, _, upper_bound] ->
             {lower_bound, _} = Integer.parse(lower_bound)
             {upper_bound, _} = Integer.parse(upper_bound)
             group
-            |> Article.by_index(lower_bound, upper_bound)
+            |> MessageBoardService.get_article_by_index(lower_bound, upper_bound)
             |> list_articles_response(group)
           nil ->
             {:error, {501, "Syntax error in range argument"}}
@@ -102,8 +96,8 @@ defmodule Athel.Nntp.SessionHandler do
     end
   end
 
-  defp list_articles_response(query, group) do
-    indexes = query |> Repo.all |> Enum.map(fn {index, _article} -> index end)
+  defp list_articles_response(articles, group) do
+    indexes = articles |> Enum.map(fn {index, _article} -> index end)
     {:continue, {211, format_group_status(group), indexes}, %{group_name: group.name}}
   end
 
@@ -130,11 +124,7 @@ defmodule Athel.Nntp.SessionHandler do
   end
 
   def get_article([id], state) do
-    message_id =
-      case Regex.run(~r/^<(.*)>$/, to_string(id)) do
-        [_, id] -> id
-        _ -> nil
-      end
+    message_id = extract_message_id(id)
 
     cond do
       !is_nil(message_id) ->
@@ -150,9 +140,7 @@ defmodule Athel.Nntp.SessionHandler do
           group_name ->
             {index, _} = if is_number(id), do: {id, ()}, else: Integer.parse(id)
             group = Repo.get_by(Group, name: group_name)
-            article = group
-            |> Article.by_index(index)
-            |> Repo.one
+            article = MessageBoardService.get_article_by_index(group, index)
 
             cond do
               is_nil(article) && is_number(id) ->
@@ -172,18 +160,40 @@ defmodule Athel.Nntp.SessionHandler do
     end
   end
 
-  command "POST", :post,
+  command "POST", :post_article,
     max_args: 0,
     auth: [required: true, response: {440, "Authentication required"}]
-  def post([], _) do
-    {:recv_article, {340, "FIRE AWAY"}}
+  def post_article([], _) do
+    {{:recv_article, :post}, {340, "FIRE AWAY"}}
   end
 
-  def handle_call({:article, headers, body}, _sender, state) do
-    case Repo.insert Article.post_changeset(%Article{}, headers, body) do
-      {:ok, _} -> {:reply, {240, "Thank you for your input"}, state}
+  def handle_call({:post_article, headers, body}, _sender, state) do
+    case MessageBoardService.post_article(headers, body) do
+      {:ok, _} -> {:reply, {240, "Your input is appreciated"}, state}
       #TODO: cleaner error message
       {:error, changeset} -> {:reply, {441, inspect(changeset.errors)}, state}
+    end
+  end
+
+  command "IHAVE", :take_article,
+    max_args: 1,
+    auth: [required: true]
+  def take_article([id], _) do
+    case extract_message_id(id) do
+      nil -> {:error, {501, "Invalid message-id"}}
+      message_id ->
+        case MessageBoardService.get_article(message_id) do
+          nil -> {{:recv_article, :take}, {335, "SEND YOUR ARTICLE OVER, OVER"}}
+          _article -> {:continue, {435, "Pfff, I already have that one loser"}}
+        end
+    end
+  end
+
+  def handle_call({:take_article, headers, body}, _sender, state) do
+    case MessageBoardService.post_article(headers, body) do
+      {:ok, _} -> {:reply, {235, "Article transferred"}, state}
+      #TODO: cleaner error message
+      {:error, changeset} -> {:reply, {436, inspect(changeset.errors)}, state}
     end
   end
 
@@ -228,6 +238,14 @@ defmodule Athel.Nntp.SessionHandler do
 
   def handle_call({other_command, _}, _sender, state) do
     respond(:continue, {501, "Unknown command #{other_command}"})
+  end
+
+  @message_id_format ~r/^<([a-zA-Z0-9$.]{2,128}@[a-zA-Z0-9.-]{2,63})>$/
+  def extract_message_id(id) do
+    case Regex.run(@message_id_format, to_string(id)) do
+      [_, id] -> id
+      _ -> nil
+    end
   end
 
 end

@@ -61,8 +61,6 @@ defmodule Athel.ModelCase do
     assert_invalid(module, attr, invalid_values, "should be at most")
   end
 
-  def assert_too_long
-
   @spec setup_models(non_neg_integer) :: Athel.Group.t
   def setup_models(article_count \\ 0) do
     group = Athel.Repo.insert! %Athel.Group {
@@ -81,7 +79,7 @@ defmodule Athel.ModelCase do
             from: "Me",
             subject: "Talking to myself",
             date: Timex.now(),
-            reference: nil,
+            parent_message_id: nil,
             content_type: "text/plain",
             body: "LET'S ROCK OUT FOR JESUS & AMERICA"
           })

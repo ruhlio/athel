@@ -1,7 +1,7 @@
 defmodule Athel.Nntp.ServerTest do
   use Athel.ModelCase
 
-  alias Athel.{Group, Article, AuthService}
+  alias Athel.{Group, Article, AuthService, MessageBoardService}
   alias Athel.Nntp.Formattable
 
   setup do
@@ -175,7 +175,7 @@ defmodule Athel.Nntp.ServerTest do
     assert send_recv(socket, "POST\r\n") =~ status(340)
     assert send_recv(socket, Formattable.format(new_article)) =~ status(240)
 
-    {_, created_article} = Repo.one! Article.by_index(group, 3)
+    {_, created_article} = MessageBoardService.get_article_by_index(group, 3)
     assert created_article.subject == new_article.subject
     assert created_article.body == new_article.body
 
@@ -224,6 +224,31 @@ defmodule Athel.Nntp.ServerTest do
     refute send_recv(socket, "CAPABILITIES\r\n") =~ "AUTHINFO"
     assert send_recv(socket, "AUTHINFO PASS dude\r\n") =~ status(502)
     assert send_recv(socket, "AUTHINFO USER jimbo\r\n") =~ status(502)
+
+    quit(socket)
+  end
+
+  test "IHAVE", %{socket: socket} do
+    group = setup_models(3)
+    article = %Article {
+      message_id: "03@test.com",
+      groups: [group],
+      from: "You",
+      subject: "Is this me?",
+      date: Timex.to_datetime({{2012, 7, 4}, {4, 51, 23}}, "America/Chicago"),
+      parent_message_id: nil,
+      content_type: "text/plain",
+      body: "I cannot fathom why"
+    }
+
+    assert send_recv(socket, "IHAVE <123@abc.cdf>\r\n") =~ status(483)
+    login(socket)
+
+    assert send_recv(socket, "IHAVE <02@test.com>\r\n") =~ status(435)
+    assert send_recv(socket, "IHAVE <03@test.com>\r\n") =~ status(335)
+    assert send_recv(socket, Formattable.format(article)) =~ status(235)
+    #TODO: reject articles (437) based off of group
+    #TODO: causes internal blowup and return 436
 
     quit(socket)
   end

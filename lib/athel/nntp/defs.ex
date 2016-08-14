@@ -1,15 +1,9 @@
 defmodule Athel.Nntp.Defs do
-  defmacro check_argument_count(command_name, count) do
-    quote do
-      def handle_call({unquote(command_name), args}, _sender, state) when length(args) > unquote(count) do
-        {:reply, {:continue, {501, "Too many arguments"}}, state}
-      end
-    end
-  end
 
   defmacro command(name, function, opts) do
     max_args = Keyword.get(opts, :max_args, 0)
     auth = Keyword.get(opts, :auth, [required: false])
+    unauthorized_response = Keyword.get(auth, :response, {483, "Unauthorized"})
 
     max_args_clause = quote do
       length(args) > unquote(max_args) ->
@@ -18,7 +12,7 @@ defmodule Athel.Nntp.Defs do
 
     auth_clause = quote do
       !is_authenticated(state) ->
-        {:reply, {:continue, unquote(auth[:response])}, state}
+        {:reply, {:continue, unquote(unauthorized_response)}, state}
     end
 
     action_clause = quote do
@@ -33,7 +27,8 @@ defmodule Athel.Nntp.Defs do
           end
         rescue
           _ in FunctionClauseError ->
-            Logger.info("Invalid arguments passed to '#{unquote(name)}': #{inspect args}")
+            Logger.info(
+              "Invalid arguments passed to '#{unquote(name)}': #{inspect args}")
             {:reply, {:error, {501, "Invalid #{unquote(name)} arguments"}}, state}
         end
     end
