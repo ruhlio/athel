@@ -149,6 +149,20 @@ defmodule Athel.Nntp.ServerTest do
     quit(socket)
   end
 
+  test "NEXT", %{socket: socket} do
+    setup_models(3)
+
+    assert send_recv(socket, "NEXT\r\n") =~ status(412)
+    assert send_recv(socket, "GROUP fun.times\r\n") =~ status(211)
+    assert send_recv(socket, "NEXT\r\n") =~ status(420)
+    assert send_recv(socket, "ARTICLE 2\r\n") =~ status(220)
+    assert send_recv(socket, "NEXT\r\n") =~ status(421)
+    assert send_recv(socket, "ARTICLE 1\r\n") =~ status(220)
+    assert send_recv(socket, "NEXT\r\n") == "223 2 <02@test.com>\r\n"
+
+    quit(socket)
+  end
+
   test "ARTICLE", %{socket: socket} do
     setup_models(5)
     article = Article

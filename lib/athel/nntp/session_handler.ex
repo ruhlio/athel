@@ -130,6 +130,27 @@ defmodule Athel.Nntp.SessionHandler do
     end
   end
 
+  command "NEXT", :select_next_article, max_args: 0
+  def select_next_article([], state) do
+    cond do
+      is_nil(state.group_name) ->
+        no_group_selected()
+      is_nil(state.article_index) ->
+        no_article_selected()
+      true ->
+        no_next_article = {:continue, {421, "No next article"}}
+        group = NntpService.get_group(state.group_name)
+        if group.high_watermark == state.article_index do
+          no_next_article
+        else
+          case NntpService.get_article_by_index(group, state.article_index + 1) do
+            nil -> no_next_article
+            {index, article} -> {:continue, {223, "#{index} <#{article.message_id}>"}}
+          end
+        end
+    end
+  end
+
   command "ARTICLE", :get_article, max_args: 1
   def get_article([], state) do
     case state.article_index do

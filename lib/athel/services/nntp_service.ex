@@ -79,7 +79,7 @@ defmodule Athel.NntpService do
     groups = Repo.all(from g in Group, where: g.name in ^group_names)
     parent_message_id = headers["References"]
     parent = unless is_nil(parent_message_id) do
-      Repo.get(Article,  parent_message_id)
+      Repo.get(Article, parent_message_id)
     end
     changeset = Article.changeset(%Article{}, params)
 
