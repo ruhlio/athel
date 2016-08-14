@@ -24,7 +24,7 @@ defmodule Athel.Nntp.SessionHandler do
 
   command "CAPABILITIES", :capabilities, max_args: 0
   def capabilities([], state) do
-    capabilities = ["VERSION 2", "POST", "LIST ACTIVE NEWGROUPS", "STARTTLS"]
+    capabilities = ["VERSION 2", "POST", "LIST ACTIVE NEWGROUPS", "STARTTLS", "IHAVE"]
     capabilities = if is_authenticated(state) do
       capabilities
     else

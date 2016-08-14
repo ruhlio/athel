@@ -50,7 +50,9 @@ defmodule Athel.Nntp.ServerTest do
       "LISTGROUP" => 2,
       "GROUP" => 1,
       "STARTTLS" => 0,
-      "AUTHINFO" => 2
+      "AUTHINFO" => 2,
+      "POST" => 0,
+      "IHAVE" => 1
     }
 
     for {command, argument_count} <- argument_counts do
@@ -70,7 +72,7 @@ defmodule Athel.Nntp.ServerTest do
   end
 
   test "CAPABILITIES", %{socket: socket} do
-    assert send_recv(socket, "CAPABILITIES\r\n") == "101 Listing capabilities\r\nVERSION 2\r\nPOST\r\nLIST ACTIVE NEWGROUPS\r\nSTARTTLS\r\nAUTHINFO USER\r\n.\r\n"
+    assert send_recv(socket, "CAPABILITIES\r\n") == "101 Listing capabilities\r\nVERSION 2\r\nPOST\r\nLIST ACTIVE NEWGROUPS\r\nSTARTTLS\r\nIHAVE\r\nAUTHINFO USER\r\n.\r\n"
 
     quit(socket)
   end
