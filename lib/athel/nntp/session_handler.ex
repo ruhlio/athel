@@ -4,7 +4,7 @@ defmodule Athel.Nntp.SessionHandler do
   require Logger
   require Athel.Nntp.Defs
   import Athel.Nntp.Defs
-  alias Athel.{Repo, AuthService, MessageBoardService, Group, Article, User}
+  alias Athel.{Repo, AuthService, NntpService, Group, Article, User}
 
   def start_link do
     GenServer.start_link(__MODULE__, :ok)
@@ -18,7 +18,7 @@ defmodule Athel.Nntp.SessionHandler do
 
   command "CAPABILITIES", :capabilities, max_args: 0
   def capabilities([], state) do
-    capabilities = ["VERSION 2", "POST", "LIST ACTIVE NEWGROUPS", "STARTTLS", "IHAVE"]
+    capabilities = ["VERSION 2", "READER", "POST", "LIST ACTIVE NEWGROUPS", "STARTTLS", "IHAVE"]
     capabilities = if is_authenticated(state) do
       capabilities
     else
@@ -40,59 +40,15 @@ defmodule Athel.Nntp.SessionHandler do
   end
 
   def list_groups(["ACTIVE"], _) do
-    groups = MessageBoardService.get_groups()
+    groups = NntpService.get_groups()
     |> Enum.map(&("#{&1.name} #{&1.high_watermark} #{&1.low_watermark} #{&1.status}"))
     {:continue, {215, "Listing groups", groups}}
   end
 
   def list_groups(["NEWSGROUPS"], _) do
-    groups = MessageBoardService.get_groups()
+    groups = NntpService.get_groups()
     |> Enum.map(&("#{&1.name} #{&1.description}"))
     {:continue, {215, "Listing group descriptions", groups}}
-  end
-
-  command "LISTGROUP", :list_articles, max_args: 2
-  def list_articles([], state) do
-    case state.group_name do
-      nil -> {:continue, {412, "Select a group first, ya dingus"}}
-      group_name -> list_articles([group_name, "1-"], state)
-    end
-  end
-
-  def list_articles([group_name], state) do
-    list_articles([group_name, "1-"], state)
-  end
-
-  def list_articles([group_name, range], _) do
-    case Repo.get_by(Group, name: group_name) do
-      nil -> {:continue, {411, "No such group"}}
-      group ->
-        case Regex.run(~r/(\d+)(-(\d+)?)?/, range) do
-          [_, index] ->
-            {index, _} = Integer.parse(index)
-            group
-            |> MessageBoardService.get_article_by_index(index)
-            |> list_articles_response(group)
-          [_, lower_bound, _unbounded] ->
-            {lower_bound, _} = Integer.parse(lower_bound)
-            group
-            |> MessageBoardService.get_article_by_index(lower_bound, :infinity)
-            |> list_articles_response(group)
-          [_, lower_bound, _, upper_bound] ->
-            {lower_bound, _} = Integer.parse(lower_bound)
-            {upper_bound, _} = Integer.parse(upper_bound)
-            group
-            |> MessageBoardService.get_article_by_index(lower_bound, upper_bound)
-            |> list_articles_response(group)
-          nil ->
-            {:error, {501, "Syntax error in range argument"}}
-        end
-    end
-  end
-
-  defp list_articles_response(articles, group) do
-    indexes = articles |> Enum.map(fn {index, _article} -> index end)
-    {:continue, {211, format_group_status(group), indexes}, %{group_name: group.name}}
   end
 
   command "GROUP", :select_group, max_args: 1
@@ -109,10 +65,75 @@ defmodule Athel.Nntp.SessionHandler do
     "#{group.high_watermark - group.low_watermark} #{group.low_watermark} #{group.high_watermark} #{group.name}"
   end
 
+  command "LISTGROUP", :list_articles, max_args: 2
+  def list_articles([], state) do
+    case state.group_name do
+      nil -> no_group_selected()
+      group_name -> list_articles([group_name, "1-"], state)
+    end
+  end
+
+  def list_articles([group_name], state) do
+    list_articles([group_name, "1-"], state)
+  end
+
+  def list_articles([group_name, range], _) do
+    case NntpService.get_group(group_name) do
+      nil -> {:continue, {411, "No such group"}}
+      group ->
+        case Regex.run(~r/(\d+)(-(\d+)?)?/, range) do
+          [_, index] ->
+            {index, _} = Integer.parse(index)
+            group
+            |> NntpService.get_article_by_index(index)
+            |> list_articles_response(group)
+          [_, lower_bound, _unbounded] ->
+            {lower_bound, _} = Integer.parse(lower_bound)
+            group
+            |> NntpService.get_article_by_index(lower_bound, :infinity)
+            |> list_articles_response(group)
+          [_, lower_bound, _, upper_bound] ->
+            {lower_bound, _} = Integer.parse(lower_bound)
+            {upper_bound, _} = Integer.parse(upper_bound)
+            group
+            |> NntpService.get_article_by_index(lower_bound, upper_bound)
+            |> list_articles_response(group)
+          nil ->
+            {:error, {501, "Syntax error in range argument"}}
+        end
+    end
+  end
+
+  defp list_articles_response(articles, group) do
+    indexes = articles |> Enum.map(fn {index, _article} -> index end)
+    {:continue, {211, format_group_status(group), indexes}, %{group_name: group.name}}
+  end
+
+  command "LAST", :select_previous_article, max_args: 0
+  def select_previous_article([], state) do
+    cond do
+      is_nil(state.group_name) ->
+        no_group_selected()
+      is_nil(state.article_index) ->
+        no_article_selected()
+      true ->
+        no_previous_article = {:continue, {422, "No previous article"}}
+        group = NntpService.get_group(state.group_name)
+        if group.low_watermark == state.article_index do
+          no_previous_article
+        else
+          case NntpService.get_article_by_index(group, state.article_index - 1) do
+            nil -> no_previous_article
+            {index, article} -> {:continue, {223, "#{index} <#{article.message_id}>"}}
+          end
+        end
+    end
+  end
+
   command "ARTICLE", :get_article, max_args: 1
   def get_article([], state) do
     case state.article_index do
-      nil -> {:continue, {420, "BLAISE IT"}}
+      nil -> no_article_selected()
       article_index -> get_article([article_index], state)
     end
   end
@@ -130,15 +151,16 @@ defmodule Athel.Nntp.SessionHandler do
         end
       to_string(id) =~ ~r/^\d+$/ ->
         case state.group_name do
-          nil -> {:continue, {412, "You ain't touchin none my articles till you touch one of my groups"}}
+          nil ->
+            no_group_selected()
           group_name ->
             {index, _} = if is_number(id), do: {id, ()}, else: Integer.parse(id)
             group = Repo.get_by(Group, name: group_name)
-            article = MessageBoardService.get_article_by_index(group, index)
+            article = NntpService.get_article_by_index(group, index)
 
             cond do
               is_nil(article) && is_number(id) ->
-                {:continue, {420, "BLAISE IT"}}
+                no_article_selected()
               is_nil(article) ->
                 {:continue, {423, "Bad index bro"}}
               true ->
@@ -162,7 +184,7 @@ defmodule Athel.Nntp.SessionHandler do
   end
 
   def handle_call({:post_article, headers, body}, _sender, state) do
-    case MessageBoardService.post_article(headers, body) do
+    case NntpService.post_article(headers, body) do
       {:ok, _} -> {:reply, {240, "Your input is appreciated"}, state}
       #TODO: cleaner error message
       {:error, changeset} -> {:reply, {441, inspect(changeset.errors)}, state}
@@ -176,7 +198,7 @@ defmodule Athel.Nntp.SessionHandler do
     case extract_message_id(id) do
       nil -> {:error, {501, "Invalid message-id"}}
       message_id ->
-        case MessageBoardService.get_article(message_id) do
+        case NntpService.get_article(message_id) do
           nil -> {{:recv_article, :take}, {335, "SEND YOUR ARTICLE OVER, OVER"}}
           _article -> {:continue, {435, "Pfff, I already have that one loser"}}
         end
@@ -184,7 +206,8 @@ defmodule Athel.Nntp.SessionHandler do
   end
 
   def handle_call({:take_article, headers, body}, _sender, state) do
-    case MessageBoardService.post_article(headers, body) do
+    #FIXME: post_article is wrong, implement take_article
+    case NntpService.post_article(headers, body) do
       {:ok, _} -> {:reply, {235, "Article transferred"}, state}
       #TODO: cleaner error message
       {:error, changeset} -> {:reply, {436, inspect(changeset.errors)}, state}
@@ -235,11 +258,19 @@ defmodule Athel.Nntp.SessionHandler do
   end
 
   @message_id_format ~r/^<([a-zA-Z0-9$.]{2,128}@[a-zA-Z0-9.-]{2,63})>$/
-  def extract_message_id(id) do
+  defp extract_message_id(id) do
     case Regex.run(@message_id_format, to_string(id)) do
       [_, id] -> id
       _ -> nil
     end
+  end
+
+  defp no_group_selected do
+    {:continue, {412, "Select a group first, ya dingus"}}
+  end
+
+  defp no_article_selected do
+    {:continue, {420, "BLAISE IT"}}
   end
 
 end

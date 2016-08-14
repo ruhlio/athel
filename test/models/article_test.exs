@@ -3,7 +3,7 @@ defmodule Athel.ArticleTest do
 
   alias Athel.Article
 
-  @valid_attrs %{message_id: "123@banana", body: "some content", content_type: "some content", date: Timex.now, from: "some content", parent: nil, subject: "some content"}
+  @valid_attrs %{message_id: "123@banana", body: "some content", content_type: "some content", date: Timex.now, from: "some content", parent: nil, subject: "some content", status: "active"}
   @invalid_attrs %{}
 
   test "changeset with valid attributes" do
@@ -42,6 +42,10 @@ defmodule Athel.ArticleTest do
     changeset = Article.changeset(%Article{}, %{@valid_attrs | message_id: "fuggg@fin"})
     |> put_assoc(:parent, parent)
     Repo.insert! changeset
+  end
+
+  test "status" do
+    assert_invalid(%Article{}, :status, "decimated", "is invalid")
   end
 
 end

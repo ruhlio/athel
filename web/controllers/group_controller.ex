@@ -1,7 +1,7 @@
 defmodule Athel.GroupController do
   use Athel.Web, :controller
 
-  alias Athel.{MessageBoardService, Group, Article}
+  alias Athel.{NntpService, Group, Article}
 
   def index(conn, _params) do
     groups = Repo.all(Group)
@@ -23,9 +23,11 @@ defmodule Athel.GroupController do
       subject: subject,
       body: body,
       content_type: "text/plain",
+      status: "active"
     }
 
-    case MessageBoardService.new_topic([group], article_changes) do
+    #TODO: move out of NntpService
+    case NntpService.new_topic([group], article_changes) do
       {:ok, article} ->
         conn
         |> put_flash(:success, "Article posted")

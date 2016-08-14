@@ -12,6 +12,8 @@ defmodule Athel.Article do
     #TODO: change to array
     field :body, :string
 
+    field :status, :string
+
     many_to_many :groups, Group,
       join_through: "articles_to_groups",
       join_keys: [message_id: :message_id, group_id: :id]
@@ -27,11 +29,12 @@ defmodule Athel.Article do
 
   def changeset(article, params \\ %{}) do
     article
-    |> cast(params, [:message_id, :from, :subject, :date, :content_type, :body])
+    |> cast(params, [:message_id, :from, :subject, :date, :content_type, :body, :status])
     |> cast_assoc(:groups)
     |> validate_format(:message_id, @message_id_format)
     |> cast_assoc(:parent, required: false)
     |> validate_required([:subject, :date, :content_type, :body])
+    |> validate_inclusion(:status, ["active", "banned"])
     #TODO: validate content_type
   end
 

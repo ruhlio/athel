@@ -1,7 +1,7 @@
 defmodule Athel.Nntp.ServerTest do
   use Athel.ModelCase
 
-  alias Athel.{Group, Article, AuthService, MessageBoardService}
+  alias Athel.{Group, Article, AuthService, NntpService}
   alias Athel.Nntp.Formattable
 
   setup do
@@ -72,7 +72,7 @@ defmodule Athel.Nntp.ServerTest do
   end
 
   test "CAPABILITIES", %{socket: socket} do
-    assert send_recv(socket, "CAPABILITIES\r\n") == "101 Listing capabilities\r\nVERSION 2\r\nPOST\r\nLIST ACTIVE NEWGROUPS\r\nSTARTTLS\r\nIHAVE\r\nAUTHINFO USER\r\n.\r\n"
+    assert send_recv(socket, "CAPABILITIES\r\n") == "101 Listing capabilities\r\nVERSION 2\r\nREADER\r\nPOST\r\nLIST ACTIVE NEWGROUPS\r\nSTARTTLS\r\nIHAVE\r\nAUTHINFO USER\r\n.\r\n"
 
     quit(socket)
   end
@@ -103,6 +103,19 @@ defmodule Athel.Nntp.ServerTest do
     quit(socket)
   end
 
+  test "GROUP", %{socket: socket} do
+    group = setup_models(2)
+    Repo.update Group.changeset(group, %{low_watermark: 5, high_watermark: 10})
+
+    assert send_recv(socket, "GROUP\r\n") =~ status(501)
+    assert send_recv(socket, "GROUP asinine.debate\r\n") =~ status(411)
+    assert send_recv(socket, "GROUP fun.times\r\n") == "211 5 5 10 fun.times\r\n"
+    # verify selected group was set for session
+    assert send_recv(socket, "LISTGROUP\r\n") =~ status(211)
+
+    quit(socket)
+  end
+
   test "LISTGROUP", %{socket: socket} do
     group = setup_models(10)
     Repo.update Group.changeset(group, %{low_watermark: 5, high_watermark: 10})
@@ -122,15 +135,16 @@ defmodule Athel.Nntp.ServerTest do
     quit(socket)
   end
 
-  test "GROUP", %{socket: socket} do
-    group = setup_models(2)
-    Repo.update Group.changeset(group, %{low_watermark: 5, high_watermark: 10})
+  test "LAST", %{socket: socket} do
+    setup_models(3)
 
-    assert send_recv(socket, "GROUP\r\n") =~ status(501)
-    assert send_recv(socket, "GROUP asinine.debate\r\n") =~ status(411)
-    assert send_recv(socket, "GROUP fun.times\r\n") == "211 5 5 10 fun.times\r\n"
-    # verify selected group was set for session
-    assert send_recv(socket, "LISTGROUP\r\n") =~ status(211)
+    assert send_recv(socket, "LAST\r\n") =~ status(412)
+    assert send_recv(socket, "GROUP fun.times\r\n") =~ status(211)
+    assert send_recv(socket, "LAST\r\n") =~ status(420)
+    assert send_recv(socket, "ARTICLE 0\r\n") =~ status(220)
+    assert send_recv(socket, "LAST\r\n") =~ status(422)
+    assert send_recv(socket, "ARTICLE 2\r\n") =~ status(220)
+    assert send_recv(socket, "LAST\r\n") == "223 1 <01@test.com>\r\n"
 
     quit(socket)
   end
@@ -177,7 +191,7 @@ defmodule Athel.Nntp.ServerTest do
     assert send_recv(socket, "POST\r\n") =~ status(340)
     assert send_recv(socket, Formattable.format(new_article)) =~ status(240)
 
-    {_, created_article} = MessageBoardService.get_article_by_index(group, 3)
+    {_, created_article} = NntpService.get_article_by_index(group, 3)
     assert created_article.subject == new_article.subject
     assert created_article.body == new_article.body
 

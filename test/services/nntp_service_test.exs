@@ -1,7 +1,7 @@
-defmodule Athel.MessageBoardServiceTest do
+defmodule Athel.NntpServiceTest do
   use Athel.ModelCase
 
-  import Athel.MessageBoardService
+  import Athel.NntpService
   alias Athel.{Article, Group}
 
   test "get groups" do
@@ -17,11 +17,21 @@ defmodule Athel.MessageBoardServiceTest do
     assert get_groups() |> Enum.map(&(&1.name)) == ["dude", "fun.times"]
   end
 
-  test "get article" do
-    setup_models(1)
+  test "get group" do
+    setup_models()
 
+    assert get_group("COSTANZA") == nil
+    assert %Group{name: "fun.times"} = get_group("fun.times")
+  end
+
+  test "get article" do
+    setup_models(2)
+
+    article = Repo.get!(Article, "00@test.com")
+    changeset = change(article, status: "banned")
+    Repo.update!(changeset)
     assert get_article("asd") == nil
-    assert get_article("00@test.com").message_id == "00@test.com"
+    assert get_article("01@test.com").message_id == "01@test.com"
   end
 
   test "get article by index" do
@@ -50,6 +60,17 @@ defmodule Athel.MessageBoardServiceTest do
     articles = get_article_by_index(group, 1, :infinity)
     assert message_ids(articles) == [
       {2, "02@test.com"},
+      {3, "03@test.com"},
+      {4, "04@test.com"}
+    ]
+
+    group = Repo.update! Group.changeset(group, %{low_watermark: 0})
+    article = Repo.get!(Article, "02@test.com")
+    changeset = change(article, status: "banned")
+    Repo.update!(changeset)
+    assert get_article_by_index(group, 0, :infinity) |> message_ids == [
+      {0, "00@test.com"},
+      {1, "01@test.com"},
       {3, "03@test.com"},
       {4, "04@test.com"}
     ]

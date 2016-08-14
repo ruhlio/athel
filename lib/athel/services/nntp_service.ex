@@ -1,4 +1,4 @@
-defmodule Athel.MessageBoardService do
+defmodule Athel.NntpService do
   import Ecto.Query
   alias Ecto.{Changeset, UUID}
   alias Athel.{Repo, Group, Article}
@@ -13,9 +13,15 @@ defmodule Athel.MessageBoardService do
     Repo.all(from g in Group, order_by: :name)
   end
 
+  @spec get_group(String.t) :: Group.t | nil
+  def get_group(group_name) do
+    Repo.get_by(Group, name: group_name)
+  end
+
   @spec get_article(String.t) :: Article.t | nil
   def get_article(message_id) do
-    Repo.get(Article, message_id)
+    Repo.one(from a in Article,
+      where: a.message_id == ^message_id and a.status == "active")
   end
 
   @spec get_article_by_index(Group.t, integer) :: indexed_article | nil
@@ -36,13 +42,21 @@ defmodule Athel.MessageBoardService do
 
   defp base_by_index(group, lower_bound) do
     lower_bound = max(group.low_watermark, lower_bound)
-    from a in Article,
-      join: g in assoc(a, :groups),
-      where: g.id == ^group.id,
-      offset: ^lower_bound,
-      order_by: :date,
-      # make `row_number()` zero-indexed to match up with `offset`
-      select: {fragment("(row_number() OVER (ORDER BY date) - 1)"), a}
+    Article
+    |> where(status: "active")
+    |> offset(^lower_bound)
+    |> order_by(:date)
+    |> select([a, i], {i.index, a})
+# subqueries with fragments in the `select` not supported, whole query must
+# be a fragment to be joined on
+# make `row_number()` zero-indexed to match up with `offset`
+    |> join(:inner, [a], i in fragment("""
+    SELECT (row_number() OVER (ORDER BY a.date) - 1) as index,
+           a.message_id as message_id
+    FROM articles a
+    JOIN articles_to_groups a2g ON a2g.message_id = a.message_id
+    JOIN groups g ON g.id = a2g.group_id AND g.name = ?
+    """, ^group.name), i.message_id == a.message_id)
   end
 
   @spec post_article(headers, list(String.t)) :: new_article_result
@@ -53,7 +67,8 @@ defmodule Athel.MessageBoardService do
       subject: headers["Subject"],
       date: Timex.now(),
       content_type: headers["Content-Type"],
-      body: Enum.join(body, "\n")
+      body: Enum.join(body, "\n"),
+      status: "active"
     }
 
     group_names = headers

@@ -74,17 +74,16 @@ defmodule Athel.ModelCase do
     for index <- 0..max(article_count - 1, 0) do
       changeset =
         Athel.Article.changeset(%Athel.Article{},
-          %{
-            message_id: "0#{index}@test.com",
+          %{message_id: "0#{index}@test.com",
             from: "Me",
             subject: "Talking to myself",
             date: Timex.now(),
             parent_message_id: nil,
             content_type: "text/plain",
-            body: "LET'S ROCK OUT FOR JESUS & AMERICA"
-          })
-          |> Ecto.Changeset.put_assoc(:groups, [group])
-      Athel.Repo.insert! changeset
+            body: "LET'S ROCK OUT FOR JESUS & AMERICA",
+            status: "active"})
+            |> Ecto.Changeset.put_assoc(:groups, [group])
+      Athel.Repo.insert!(changeset)
     end
 
     group
