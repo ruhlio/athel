@@ -10,7 +10,7 @@ defmodule Athel.Article do
     field :date, Timex.Ecto.DateTime
     field :content_type, :string
     #TODO: change to array
-    field :body, :string
+    field :body, {:array, :string}
 
     field :status, :string
 
@@ -36,6 +36,39 @@ defmodule Athel.Article do
     |> validate_required([:subject, :date, :content_type, :body])
     |> validate_inclusion(:status, ["active", "banned"])
     #TODO: validate content_type
+  end
+
+  def get_headers(article) do
+    %{"Newsgroups" => format_article_groups(article.groups),
+      "Message-ID" => format_message_id(article.message_id),
+      "References" => format_message_id(article.parent_message_id),
+      "From" => article.from,
+      "Subject" => article.subject,
+      "Date" => format_date(article.date),
+      "Content-Type" => article.content_type}
+  end
+
+  defp format_message_id(message_id) when is_nil(message_id) do
+    nil
+  end
+
+  defp format_message_id(message_id) do
+    [?<, message_id, ?>]
+  end
+
+  defp format_date(date) when is_nil(date) do
+    nil
+  end
+
+  defp format_date(date) do
+    Timex.format!(date, "%d %b %Y %H:%M:%S %z", :strftime)
+  end
+
+  defp format_article_groups(groups) do
+    Enum.reduce(groups, :first, fn
+      group, :first -> [group.name]
+      group, acc -> [acc, ?,, group.name]
+    end)
   end
 
 end

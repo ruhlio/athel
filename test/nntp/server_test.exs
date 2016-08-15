@@ -183,6 +183,39 @@ defmodule Athel.Nntp.ServerTest do
     quit(socket)
   end
 
+  test "HEAD", %{socket: socket} do
+    setup_models(2)
+    headers = Article
+    |> Repo.get("01@test.com")
+    |> Repo.preload(:groups)
+    |> Article.get_headers
+    |> Formattable.format
+
+    assert send_recv(socket, "HEAD <01@test.com>\r\n") == "220 0 <01@test.com>\r\n#{headers}"
+
+    quit(socket)
+  end
+
+  test "BODY", %{socket: socket} do
+    setup_models(2)
+    body = Article
+    |> Repo.get("01@test.com")
+    |> Repo.preload(:groups)
+    |> (fn group -> group.body end).()
+    |> Formattable.format
+
+    assert send_recv(socket, "BODY <01@test.com>\r\n") == "220 0 <01@test.com>\r\n#{body}"
+
+    quit(socket)
+  end
+
+  test "STAT", %{socket: socket} do
+    setup_models(2)
+    assert send_recv(socket, "STAT <01@test.com>\r\n") == "223 0 <01@test.com>\r\n"
+
+    quit(socket)
+  end
+
   test "POST", %{socket: socket} do
     group = setup_models(3)
     other_group = Repo.insert! %Group {
@@ -197,7 +230,7 @@ defmodule Athel.Nntp.ServerTest do
       from: ~s("MARDAR" <mardar@wardar.karfar>),
       groups: [group, other_group],
       content_type: "text/plain",
-      body: "YOU'RE ONE OF THEM"
+      body: ["YOU'RE ONE OF THEM"]
     }
 
     assert send_recv(socket, "POST\r\n") =~ status(440)
@@ -268,7 +301,7 @@ defmodule Athel.Nntp.ServerTest do
       date: Timex.to_datetime({{2012, 7, 4}, {4, 51, 23}}, "America/Chicago"),
       parent_message_id: nil,
       content_type: "text/plain",
-      body: "I cannot fathom why"
+      body: ["I cannot fathom why"]
     }
 
     assert send_recv(socket, "IHAVE <123@abc.cdf>\r\n") =~ status(483)

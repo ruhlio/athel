@@ -1,4 +1,5 @@
 defmodule Athel.Nntp.Format do
+  alias Athel.Article
 
   @spec format_multiline(list(String.t | String.Chars.t)) :: String.t
   def format_multiline(lines) do
@@ -8,21 +9,14 @@ defmodule Athel.Nntp.Format do
 
   @spec format_article(Athel.Article.t) :: String.t
   def format_article(article) do
-    headers = format_headers %{
-      "Newsgroups" => format_article_groups(article.groups),
-      "Message-ID" => format_message_id(article.message_id),
-      "References" => format_message_id(article.parent_message_id),
-      "From" => article.from,
-      "Subject" => article.subject,
-      "Date" => format_date(article.date),
-      "Content-Type" => article.content_type
-    }
-    body = article.body |> String.split("\n") |> format_multiline
+    headers = article |> Article.get_headers |> format_headers
+    body = article.body |> format_multiline
 
     [headers, body] |> IO.iodata_to_binary
   end
 
-  defp format_headers(headers) do
+  @spec format_headers(%{optional(String.t) => String.t}) :: String.t
+  def format_headers(headers) do
     [Enum.reduce(headers, [], &format_header/2), "\r\n"]
   end
 
@@ -32,29 +26,6 @@ defmodule Athel.Nntp.Format do
 
   defp format_header({key, value}, acc) do
     [acc, [key, ": ", value, "\r\n"]]
-  end
-
-  defp format_article_groups(groups) do
-    Enum.reduce(groups, :first, fn
-      group, :first -> [group.name]
-      group, acc -> [acc, ?,, group.name]
-    end)
-  end
-
-  defp format_message_id(message_id) when is_nil(message_id) do
-    nil
-  end
-
-  defp format_message_id(message_id) do
-    [?<, message_id, ?>]
-  end
-
-  defp format_date(date) when is_nil(date) do
-    nil
-  end
-
-  defp format_date(date) do
-    Timex.format!(date, "%d %b %Y %H:%M:%S %z", :strftime)
   end
 
   defp escape_line(<<".", rest :: binary>>, acc) do
@@ -89,6 +60,14 @@ defimpl Athel.Nntp.Formattable, for: Range do
 
   def format(range) do
     format_multiline(range)
+  end
+end
+
+defimpl Athel.Nntp.Formattable, for: Map do
+  import Athel.Nntp.Format
+
+  def format(headers) do
+    format_headers(headers)
   end
 end
 

@@ -152,14 +152,25 @@ defmodule Athel.Nntp.SessionHandler do
   end
 
   command "ARTICLE", :get_article, max_args: 1
-  def get_article([], state) do
+  def get_article(args, state), do: retrieve(&(&1), args, state)
+
+  command "HEAD", :get_article_headers, max_args: 1
+  def get_article_headers(args, state), do: retrieve(&Article.get_headers/1, args, state)
+
+  command "BODY", :get_article_body, max_args: 1
+  def get_article_body(args, state), do: retrieve(&(&1.body), args, state)
+
+  command "STAT", :get_article_stat, max_args: 1
+  def get_article_stat(args, state), do: retrieve(nil, args, state)
+
+  defp retrieve(extractor, [], state) do
     case state.article_index do
       nil -> no_article_selected()
-      article_index -> get_article([article_index], state)
+      article_index -> retrieve(extractor, [article_index], state)
     end
   end
 
-  def get_article([id], state) do
+  defp retrieve(extractor, [id], state) do
     message_id = extract_message_id(id)
 
     cond do
@@ -168,7 +179,7 @@ defmodule Athel.Nntp.SessionHandler do
           nil ->
             {:continue, {430, "No such article"}}
           article ->
-            {:continue, {220, "0 #{id}", article |> Repo.preload(:groups)}}
+            {:continue, retrieve_response(extractor, 0, article)}
         end
       to_string(id) =~ ~r/^\d+$/ ->
         case state.group_name do
@@ -187,14 +198,23 @@ defmodule Athel.Nntp.SessionHandler do
               true ->
                 {_, article} = article
                 {:continue,
-                 {220, "#{index} <#{article.message_id}>",
-                  article |> Repo.preload(:groups)},
+                 retrieve_response(extractor, index, article),
                  %{article_index: index}}
             end
         end
       true ->
         {:error, {501, "Invalid message id/index"}}
     end
+  end
+
+  # STAT has an edge case response
+  defp retrieve_response(nil, index, article) do
+    {223, "#{index} <#{article.message_id}>"}
+  end
+
+  defp retrieve_response(extractor, index, article) do
+    extracted = article |> Repo.preload(:groups) |> extractor.()
+    {220, "#{index} <#{article.message_id}>", extracted}
   end
 
   command "POST", :post_article,

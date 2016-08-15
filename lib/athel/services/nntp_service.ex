@@ -68,7 +68,7 @@ defmodule Athel.NntpService do
       subject: headers["Subject"],
       date: Timex.now(),
       content_type: headers["Content-Type"],
-      body: Enum.join(body, "\n"),
+      body: body,
       status: "active"
     }
 
