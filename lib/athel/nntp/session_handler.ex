@@ -248,7 +248,7 @@ defmodule Athel.Nntp.SessionHandler do
 
   def handle_call({:take_article, headers, body}, _sender, state) do
     #FIXME: post_article is wrong, implement take_article
-    case NntpService.post_article(headers, body) do
+    case NntpService.take_article(headers, body) do
       {:ok, _} -> {:reply, {235, "Article transferred"}, state}
       #TODO: cleaner error message
       {:error, changeset} -> {:reply, {436, inspect(changeset.errors)}, state}

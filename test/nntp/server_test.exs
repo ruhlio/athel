@@ -298,7 +298,7 @@ defmodule Athel.Nntp.ServerTest do
       groups: [group],
       from: "You",
       subject: "Is this me?",
-      date: Timex.to_datetime({{2012, 7, 4}, {4, 51, 23}}, "America/Chicago"),
+      date: Timex.to_datetime({{2012, 7, 4}, {4, 51, 23}}, "Etc/UTC"),
       parent_message_id: nil,
       content_type: "text/plain",
       body: ["I cannot fathom why"]
@@ -310,6 +310,7 @@ defmodule Athel.Nntp.ServerTest do
     assert send_recv(socket, "IHAVE <02@test.com>\r\n") =~ status(435)
     assert send_recv(socket, "IHAVE <03@test.com>\r\n") =~ status(335)
     assert send_recv(socket, Formattable.format(article)) =~ status(235)
+    assert send_recv(socket, "ARTICLE <03@test.com>\r\n") == "220 0 <03@test.com>\r\n#{Formattable.format(article)}"
     #TODO: reject articles (437) based off of group
     #TODO: causes internal blowup and return 436
 

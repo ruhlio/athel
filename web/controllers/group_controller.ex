@@ -21,7 +21,7 @@ defmodule Athel.GroupController do
     article_changes = %{
       from: from,
       subject: subject,
-      body: body,
+      body: String.split(body, "\n"),
       content_type: "text/plain",
       status: "active"
     }

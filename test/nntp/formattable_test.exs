@@ -23,7 +23,7 @@ defmodule Athel.Nntp.FormatTest do
 
   test "article" do
     article = create_article()
-    assert Formattable.format(article) == "Content-Type: text/plain\r\nDate: 04 May 2016 03:02:01 -0500\r\nFrom: Me\r\nMessage-ID: <123@test.com>\r\nNewsgroups: fun.times,blow.away\r\nReferences: <547@heav.en>\r\nSubject: Talking to myself\r\n\r\nhow was your day?\r\nyou're too kind to ask\r\n.\r\n"
+    assert Formattable.format(article) == "Content-Type: text/plain\r\nDate: Wed, 04 May 2016 03:02:01 -0500\r\nFrom: Me\r\nMessage-ID: <123@test.com>\r\nNewsgroups: fun.times,blow.away\r\nReferences: <547@heav.en>\r\nSubject: Talking to myself\r\n\r\nhow was your day?\r\nyou're too kind to ask\r\n.\r\n"
   end
 
   test "article without optional fields" do
@@ -54,7 +54,7 @@ defmodule Athel.Nntp.FormatTest do
       parent_message_id: "547@heav.en",
       content_type: "text/plain",
       groups: groups,
-      body: "how was your day?\nyou're too kind to ask"
+      body: ["how was your day?", "you're too kind to ask"]
     }
   end
 end

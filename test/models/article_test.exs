@@ -3,7 +3,7 @@ defmodule Athel.ArticleTest do
 
   alias Athel.Article
 
-  @valid_attrs %{message_id: "123@banana", body: "some content", content_type: "some content", date: Timex.now, from: "some content", parent: nil, subject: "some content", status: "active"}
+  @valid_attrs %{message_id: "123@banana", body: ["some content"], content_type: "some content", date: Timex.now(), from: "some content", parent: nil, subject: "some content", status: "active"}
   @invalid_attrs %{}
 
   test "changeset with valid attributes" do
@@ -21,6 +21,15 @@ defmodule Athel.ArticleTest do
   test "message id format" do
     changeset = Article.changeset(%Article{}, %{@valid_attrs | message_id: "balogna"})
     assert error(changeset, :message_id) == "has invalid format"
+
+    changeset = Article.changeset(%Article{}, %{@valid_attrs | message_id: "<with@angle.brackets>"})
+    assert changeset.valid?
+    assert changeset.changes[:message_id] == "with@angle.brackets"
+  end
+
+  test "string date" do
+    changeset = Article.changeset(%Article{}, %{@valid_attrs | date: "Tue, 04 Jul 2012 04:51:23 -0500"})
+    assert changeset.changes[:date] == Timex.to_datetime({{2012, 7, 4}, {4, 51, 23}}, "Etc/GMT+5")
   end
 
   test "message id uniqueness" do

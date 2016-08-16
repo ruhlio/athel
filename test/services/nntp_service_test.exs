@@ -101,8 +101,27 @@ defmodule Athel.NntpServiceTest do
     assert article.from == headers["From"]
     assert article.subject == headers["Subject"]
     assert article.content_type == headers["Content-Type"]
-    assert String.split(article.body, "\n") == body
+    assert article.body == body
     assert article.groups == [group]
+  end
+
+  test "take" do
+    setup_models()
+
+    date = Timex.to_datetime({{2012, 7, 4}, {4, 51, 23}}, "Etc/GMT+6")
+    headers = %{
+      "Message-ID" => "<not@really.here>",
+      "Date" => "Tue, 04 Jul 2012 04:51:23 -0600",
+      "From" => "ur mum",
+      "Subject" => "heehee",
+      "Content-Type" => "text/plain",
+      "Newsgroups" => "fun.times"
+    }
+    body = ["brass monkey"]
+    {:ok, taken_article} = take_article(headers, body)
+
+    assert taken_article.date == date
+    assert taken_article.message_id == "not@really.here"
   end
 
   defp message_ids(articles) do

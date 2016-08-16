@@ -25,13 +25,15 @@ defmodule Athel.Article do
     timestamps()
   end
 
-  @message_id_format ~r/^[a-zA-Z0-9$.]{2,128}@[a-zA-Z0-9.-]{2,63}$/
+  @message_id_format ~r/^<?([a-zA-Z0-9$.]{2,128}@[a-zA-Z0-9.-]{2,63})>?$/
+  @date_format "%a, %d %b %Y %H:%M:%S %z"
 
   def changeset(article, params \\ %{}) do
     article
-    |> cast(params, [:message_id, :from, :subject, :date, :content_type, :body, :status])
+    |> cast(params, [:message_id, :from, :subject, :content_type, :body, :status])
     |> cast_assoc(:groups)
-    |> validate_format(:message_id, @message_id_format)
+    |> parse_date(params[:date])
+    |> parse_message_id
     |> cast_assoc(:parent, required: false)
     |> validate_required([:subject, :date, :content_type, :body])
     |> validate_inclusion(:status, ["active", "banned"])
@@ -48,6 +50,37 @@ defmodule Athel.Article do
       "Content-Type" => article.content_type}
   end
 
+  defp parse_message_id(changeset) do
+    parse_value(changeset, :message_id, fn message_id ->
+      case Regex.run(@message_id_format, message_id) do
+        nil -> {:error, "has invalid format"}
+        [_, id] -> {:ok, id}
+      end
+    end)
+  end
+
+  defp parse_date(changeset, date) do
+    parse_value(changeset, :date, fn _ ->
+      if is_binary(date) do
+        Timex.parse(date, @date_format, Timex.Parse.DateTime.Tokenizers.Strftime)
+      else
+        {:ok, date}
+      end
+    end)
+  end
+
+  defp parse_value(changeset = %{changes: changes, errors: errors}, key, parser) do
+    value = Map.get(changeset.changes, key, "")
+    case parser.(value) do
+      {:error, message} ->
+        error = {key, {message, []}}
+        %{changeset | errors: [error | errors], valid?: false}
+      {:ok, new_value} ->
+        new_changes = Map.put(changes, key, new_value)
+        %{changeset | changes: new_changes}
+    end
+  end
+
   defp format_message_id(message_id) when is_nil(message_id) do
     nil
   end
@@ -61,7 +94,7 @@ defmodule Athel.Article do
   end
 
   defp format_date(date) do
-    Timex.format!(date, "%d %b %Y %H:%M:%S %z", :strftime)
+    Timex.format!(date, @date_format, :strftime)
   end
 
   defp format_article_groups(groups) do

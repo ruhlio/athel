@@ -1,4 +1,6 @@
 defmodule Athel.NntpService do
+  require Logger
+
   import Ecto.Query
   alias Ecto.{Changeset, UUID}
   alias Athel.{Repo, Group, Article}
@@ -62,16 +64,31 @@ defmodule Athel.NntpService do
 
   @spec post_article(headers, list(String.t)) :: new_article_result
   def post_article(headers, body) do
+    save_article(headers,
+      %{message_id: generate_message_id(),
+        from: headers["From"],
+        subject: headers["Subject"],
+        date: Timex.now(),
+        content_type: headers["Content-Type"],
+        body: body,
+        status: "active"})
+  end
+
+  @spec take_article(headers, list(String.t)) :: new_article_result
+  def take_article(headers, body) do
     params = %{
-      message_id: generate_message_id(),
+      message_id: headers["Message-ID"],
+      date: headers["Date"],
       from: headers["From"],
       subject: headers["Subject"],
-      date: Timex.now(),
       content_type: headers["Content-Type"],
       body: body,
       status: "active"
     }
+    save_article(headers, params)
+  end
 
+  defp save_article(headers, params) do
     group_names = headers
     |> Map.get("Newsgroups", "")
     |> String.split(",")
