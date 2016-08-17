@@ -1,6 +1,7 @@
 defmodule Athel.Nntp.ServerTest do
   use Athel.ModelCase
 
+  alias Timex.Parse.DateTime.Tokenizers.Strftime
   alias Athel.{Group, Article, AuthService, NntpService}
   alias Athel.Nntp.Formattable
 
@@ -318,13 +319,25 @@ defmodule Athel.Nntp.ServerTest do
   end
 
   test "DATE", %{socket: socket} do
-    alias Timex.Parse.DateTime.Tokenizers.Strftime
-
     date =
       with [_, raw_date] <- Regex.run(~r/^111 (\d{14})\r\n$/, send_recv(socket, "DATE\r\n")),
            {:ok, date} <- Timex.parse(raw_date, "%Y%m%d%H%M%S", Strftime),
       do: date
     assert 0 == Timex.compare(Timex.now(), date, :minutes)
+
+    quit(socket)
+  end
+
+  test "NEWGROUPS", %{socket: socket} do
+    setup_models()
+    assert send_recv(socket, "NEWGROUPS newspaper 1122\r\n") =~ status(501)
+    assert send_recv(socket, "NEWGROUPS 20120408 hihi\r\n") =~ status(501)
+    assert send_recv(socket, "NEWGROUPS 99999999 9999\r\n") =~ status(501)
+
+    before = Timex.now() |> Timex.subtract(Timex.Duration.from_minutes(1))
+    date = Timex.format!(before, "%Y%m%d", :strftime)
+    time = Timex.format!(before, "%H%M", :strftime)
+    assert send_recv(socket, "NEWGROUPS #{date} #{time}\r\n") == "231 HERE WE GO\r\nfun.times 0 0 y\r\n.\r\n"
 
     quit(socket)
   end

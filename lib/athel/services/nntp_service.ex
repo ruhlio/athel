@@ -20,6 +20,13 @@ defmodule Athel.NntpService do
     Repo.get_by(Group, name: group_name)
   end
 
+  @spec get_groups_created_after(Timex.DateTime) :: list(Group.t)
+  def get_groups_created_after(date) do
+    Repo.all(from g in Group,
+      where: g.inserted_at > ^date,
+      order_by: g.inserted_at)
+  end
+
   @spec get_article(String.t) :: Article.t | nil
   def get_article(message_id) do
     Repo.one(from a in Article,

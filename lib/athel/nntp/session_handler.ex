@@ -4,6 +4,7 @@ defmodule Athel.Nntp.SessionHandler do
   require Logger
   require Athel.Nntp.Defs
   import Athel.Nntp.Defs
+  alias Timex.Parse.DateTime.Tokenizers.Strftime
   alias Athel.{Repo, AuthService, NntpService, Group, Article, User}
 
   def start_link do
@@ -46,7 +47,7 @@ defmodule Athel.Nntp.SessionHandler do
 
   def list_groups(["ACTIVE"], _) do
     groups = NntpService.get_groups()
-    |> Enum.map(&("#{&1.name} #{&1.high_watermark} #{&1.low_watermark} #{&1.status}"))
+    |> Enum.map(&format_group/1)
     {:continue, {215, "Listing groups", groups}}
   end
 
@@ -265,6 +266,16 @@ defmodule Athel.Nntp.SessionHandler do
     {:continue, {111, date}}
   end
 
+  command "NEWGROUPS", :get_new_groups, max_args: 2
+  def get_new_groups([date, time], _) do
+    case Timex.parse("#{date}#{time}", "%Y%m%d%H%M", Strftime) do
+      {:ok, date} ->
+        groups = NntpService.get_groups_created_after(date) |> Enum.map(&format_group/1)
+        {:continue, {231, "HERE WE GO", groups}}
+      {:error, _} -> {:error, {501, "Invalid datetime"}}
+    end
+  end
+
   command "STARTTLS", :start_tls, max_args: 0
   def start_tls([], state) do
     if is_authenticated(state) do
@@ -301,6 +312,10 @@ defmodule Athel.Nntp.SessionHandler do
 
   def handle_call({other_command, _}, _sender, state) do
     {:reply, {:continue, {501, "Unknown command #{other_command}"}}, state}
+  end
+
+  defp format_group(group) do
+    "#{group.name} #{group.high_watermark} #{group.low_watermark} #{group.status}"
   end
 
   @message_id_format ~r/^<([a-zA-Z0-9$.]{2,128}@[a-zA-Z0-9.-]{2,63})>$/

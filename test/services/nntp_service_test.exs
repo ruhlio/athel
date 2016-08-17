@@ -124,6 +124,25 @@ defmodule Athel.NntpServiceTest do
     assert taken_article.message_id == "not@really.here"
   end
 
+  test "get new groups" do
+    Repo.insert!(%Group {
+          name: "old.timer",
+          description: "I can smell the graveworms",
+          low_watermark: 0,
+          high_watermark: 0,
+          status: "y",
+          inserted_at: ~N[1969-12-31 23:59:59]})
+    Repo.insert!(%Group {
+          name: "young.whippersnapper",
+          description: "I wanna be you fetish queen",
+          low_watermark: 0,
+          high_watermark: 0,
+          status: "y",
+          inserted_at: ~N[2012-03-04 05:55:55]})
+    assert get_groups_created_after(~N[2010-04-05 22:22:22])
+    |> Enum.map(&(&1.name)) == ["young.whippersnapper"]
+  end
+
   defp message_ids(articles) do
     Enum.map(articles, fn {row, article} -> {row, article.message_id} end)
   end
