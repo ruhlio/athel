@@ -33,6 +33,11 @@ defmodule Athel.Nntp.SessionHandler do
     {:quit, {205, "SEE YA"}}
   end
 
+  command "MODE", :mode, max_args: 1
+  def mode(["READER"], _) do
+    {:continue, {200, "Whatever dude"}}
+  end
+
   #TODO: LIST ACTIVE with wildmat
   command "LIST", :list_groups, max_args: 2
   def list_groups([], state) do
@@ -247,7 +252,6 @@ defmodule Athel.Nntp.SessionHandler do
   end
 
   def handle_call({:take_article, headers, body}, _sender, state) do
-    #FIXME: post_article is wrong, implement take_article
     case NntpService.take_article(headers, body) do
       {:ok, _} -> {:reply, {235, "Article transferred"}, state}
       #TODO: cleaner error message
@@ -255,9 +259,10 @@ defmodule Athel.Nntp.SessionHandler do
     end
   end
 
-  command "MODE", :mode, max_args: 1
-  def mode(["READER"], _) do
-    {:continue, {200, "Whatever dude"}}
+  command "DATE", :get_date, max_args: 0
+  def get_date([], _) do
+    date = Timex.format!(Timex.now(), "%Y%m%d%H%M%S", :strftime)
+    {:continue, {111, date}}
   end
 
   command "STARTTLS", :start_tls, max_args: 0

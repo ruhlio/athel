@@ -317,6 +317,18 @@ defmodule Athel.Nntp.ServerTest do
     quit(socket)
   end
 
+  test "DATE", %{socket: socket} do
+    alias Timex.Parse.DateTime.Tokenizers.Strftime
+
+    date =
+      with [_, raw_date] <- Regex.run(~r/^111 (\d{14})\r\n$/, send_recv(socket, "DATE\r\n")),
+           {:ok, date} <- Timex.parse(raw_date, "%Y%m%d%H%M%S", Strftime),
+      do: date
+    assert 0 == Timex.compare(Timex.now(), date, :minutes)
+
+    quit(socket)
+  end
+
   defp send_recv(socket = {:sslsocket, _, _}, payload) do
     :ssl.send(socket, payload)
     {:ok, resp} = :ssl.recv(socket, 0)
