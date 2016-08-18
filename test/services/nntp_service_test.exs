@@ -143,6 +143,29 @@ defmodule Athel.NntpServiceTest do
     |> Enum.map(&(&1.name)) == ["young.whippersnapper"]
   end
 
+  test "get new articles" do
+    group = setup_models()
+
+    articles = [
+      %{message_id: "good@old.boys", date: ~N[1969-12-31 23:59:59]},
+      %{message_id: "cherry@burger.pies", date: ~N[2012-03-04 05:55:55]}
+    ]
+    for article <- articles do
+      changeset = Article.changeset(%Article{}, Map.merge(article,
+        %{from: "whoever",
+          subject: "whatever",
+          body: ["however"],
+          content_type: "text/plain",
+          status: "active"}))
+      |> put_assoc(:groups, [group])
+      Repo.insert!(changeset)
+    end
+
+    assert get_articles_created_after("fun.times", ~N[2010-04-05 22:22:22])
+    |> Enum.map(&(&1.message_id)) == ["cherry@burger.pies"]
+    assert get_articles_created_after("bad.times", ~N[2010-04-05 22:22:22]) == []
+  end
+
   defp message_ids(articles) do
     Enum.map(articles, fn {row, article} -> {row, article.message_id} end)
   end

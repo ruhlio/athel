@@ -53,7 +53,9 @@ defmodule Athel.Nntp.ServerTest do
       "STARTTLS" => 0,
       "AUTHINFO" => 2,
       "POST" => 0,
-      "IHAVE" => 1
+      "IHAVE" => 1,
+      "NEWGROUPS" => 2,
+      "NEWNEWS" => 3
     }
 
     for {command, argument_count} <- argument_counts do
@@ -338,6 +340,19 @@ defmodule Athel.Nntp.ServerTest do
     date = Timex.format!(before, "%Y%m%d", :strftime)
     time = Timex.format!(before, "%H%M", :strftime)
     assert send_recv(socket, "NEWGROUPS #{date} #{time}\r\n") == "231 HERE WE GO\r\nfun.times 0 0 y\r\n.\r\n"
+
+    quit(socket)
+  end
+
+  test "NEWNEWS", %{socket: socket} do
+    setup_models(2)
+    assert send_recv(socket, "NEWNEWS sherry cheesy puffs\r\n") =~ status(501)
+
+    before = Timex.now() |> Timex.subtract(Timex.Duration.from_minutes(1))
+    date = Timex.format!(before, "%Y%m%d", :strftime)
+    time = Timex.format!(before, "%H%M", :strftime)
+    assert send_recv(socket, "NEWNEWS fun.times #{date} #{time}\r\n") == "230 HOO-WEE\r\n<00@test.com>\r\n<01@test.com>\r\n.\r\n"
+    assert send_recv(socket, "NEWNEWS butts #{date} #{time}\r\n") == "230 HOO-WEE\r\n.\r\n"
 
     quit(socket)
   end

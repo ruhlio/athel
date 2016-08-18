@@ -33,6 +33,14 @@ defmodule Athel.NntpService do
       where: a.message_id == ^message_id and a.status == "active")
   end
 
+  @spec get_articles_created_after(String.t, Timex.DateTime) :: list(Article.t)
+  def get_articles_created_after(group_name, date) do
+    Repo.all(from a in Article,
+      join: g in assoc(a, :groups),
+      where: a.date > ^date and g.name == ^group_name,
+      order_by: a.inserted_at)
+  end
+
   @spec get_article_by_index(Group.t, integer) :: indexed_article | nil
   def get_article_by_index(group, index) do
     group |> base_by_index(index) |> limit(1) |> Repo.one

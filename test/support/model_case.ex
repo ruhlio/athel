@@ -71,19 +71,21 @@ defmodule Athel.ModelCase do
       high_watermark: 0
     })
 
-    for index <- 0..max(article_count - 1, 0) do
-      changeset =
-        Athel.Article.changeset(%Athel.Article{},
-          %{message_id: "0#{index}@test.com",
-            from: "Me",
-            subject: "Talking to myself",
-            date: Timex.now(),
-            parent_message_id: nil,
-            content_type: "text/plain",
-            body: ["LET'S ROCK OUT FOR JESUS & AMERICA"],
-            status: "active"})
-            |> Ecto.Changeset.put_assoc(:groups, [group])
-      Athel.Repo.insert!(changeset)
+    if article_count > 0 do
+      for index <- 0..(article_count - 1) do
+        changeset =
+          Athel.Article.changeset(%Athel.Article{},
+            %{message_id: "0#{index}@test.com",
+              from: "Me",
+              subject: "Talking to myself",
+              date: Timex.now(),
+              parent_message_id: nil,
+              content_type: "text/plain",
+              body: ["LET'S ROCK OUT FOR JESUS & AMERICA"],
+              status: "active"})
+              |> Ecto.Changeset.put_assoc(:groups, [group])
+        Athel.Repo.insert!(changeset)
+      end
     end
 
     group

@@ -268,11 +268,27 @@ defmodule Athel.Nntp.SessionHandler do
 
   command "NEWGROUPS", :get_new_groups, max_args: 2
   def get_new_groups([date, time], _) do
+    parse_datetime(date, time, fn date ->
+      groups = NntpService.get_groups_created_after(date) |> Enum.map(&format_group/1)
+      {:continue, {231, "HERE WE GO", groups}}
+    end)
+  end
+
+  command "NEWNEWS", :get_new_articles, max_args: 3
+  #TODO: implement wildmat
+  def get_new_articles([group_name, date, time], _) do
+    parse_datetime(date, time, fn date ->
+      message_ids = NntpService.get_articles_created_after(group_name, date)
+      |> Enum.map(&("<#{&1.message_id}>"))
+      {:continue, {230, "HOO-WEE", message_ids}}
+    end)
+  end
+
+  #deviation from the spec: doesn't support 2 digit years or seconds
+  def parse_datetime(date, time, valid) do
     case Timex.parse("#{date}#{time}", "%Y%m%d%H%M", Strftime) do
-      {:ok, date} ->
-        groups = NntpService.get_groups_created_after(date) |> Enum.map(&format_group/1)
-        {:continue, {231, "HERE WE GO", groups}}
-      {:error, _} -> {:error, {501, "Invalid datetime"}}
+      {:ok, date} -> valid.(date)
+      {:error, _} -> {:error, {501, "Invalid date/time, supported format is 'yyyymmdd hhmm'"}}
     end
   end
 
