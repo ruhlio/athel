@@ -1,7 +1,7 @@
 defmodule Athel.Article do
   use Athel.Web, :model
-
-  alias Athel.Group
+  
+  alias Athel.{Group, Attachment}
 
   @primary_key {:message_id, :string, autogenerate: false}
   schema "articles" do
@@ -21,6 +21,9 @@ defmodule Athel.Article do
       foreign_key: :parent_message_id,
       references: :message_id,
       type: :string
+    many_to_many :attachments, Attachment,
+      join_through: "attachments_to_articles",
+      join_keys: [message_id: :message_id, attachment_id: :id]
 
     timestamps()
   end
