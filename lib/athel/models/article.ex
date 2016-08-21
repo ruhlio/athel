@@ -1,6 +1,6 @@
 defmodule Athel.Article do
   use Athel.Web, :model
-  
+
   alias Athel.{Group, Attachment}
 
   @primary_key {:message_id, :string, autogenerate: false}
@@ -30,6 +30,7 @@ defmodule Athel.Article do
 
   @message_id_format ~r/^<?([a-zA-Z0-9$.]{2,128}@[a-zA-Z0-9.-]{2,63})>?$/
   @date_format "%a, %d %b %Y %H:%M:%S %z"
+  def date_format, do: @date_format
 
   def changeset(article, params \\ %{}) do
     article
@@ -44,13 +45,21 @@ defmodule Athel.Article do
   end
 
   def get_headers(article) do
-    %{"Newsgroups" => format_article_groups(article.groups),
-      "Message-ID" => format_message_id(article.message_id),
-      "References" => format_message_id(article.parent_message_id),
-      "From" => article.from,
-      "Subject" => article.subject,
-      "Date" => format_date(article.date),
-      "Content-Type" => article.content_type}
+    headers = %{"Newsgroups" => format_article_groups(article.groups),
+                "Message-ID" => format_message_id(article.message_id),
+                "References" => format_message_id(article.parent_message_id),
+                "From" => article.from,
+                "Subject" => article.subject,
+                "Date" => format_date(article.date)}
+    if Enum.empty?(article.attachments) do
+      {headers |> Map.put("Content-Type", article.content_type), nil}
+    else
+      boundary = Ecto.UUID.generate()
+      headers = headers
+      |> Map.put("MIME-Version", "1.0")
+      |> Map.put("Content-Type", "multipart/mixed; boundary=\"#{boundary}\"")
+      {headers, boundary}
+    end
   end
 
   defp parse_message_id(changeset) do
@@ -97,7 +106,7 @@ defmodule Athel.Article do
   end
 
   defp format_date(date) do
-    Timex.format!(date, @date_format, :strftime)
+    Timex.format!(date, Athel.Article.date_format, :strftime)
   end
 
   defp format_article_groups(groups) do
@@ -108,3 +117,24 @@ defmodule Athel.Article do
   end
 
 end
+
+defimpl Athel.Nntp.Formattable, for: Athel.Article do
+  alias Athel.Nntp.Formattable
+
+  def format(article) do
+    {headers, boundary} = Athel.Article.get_headers(article)
+    body = if is_nil(boundary) do
+      Formattable.format(article.body)
+    else
+      attachments = article.attachments |> Enum.map(fn attachment ->
+        ["\r\n--", boundary, Formattable.format(attachment)]
+      end)
+      #NOTE: article lines won't be escaped (nested list won't pattern match),
+      # which is ok since attachment content is always base64'd
+      Formattable.format(article.body ++ [attachments, "--#{boundary}--"])
+    end
+    [Formattable.format(headers), body]
+  end
+
+end
+

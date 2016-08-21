@@ -3,6 +3,7 @@ defmodule Athel.Repo.Migrations.CreateAttachment do
 
   def change do
     create table(:attachments) do
+      add :filename, :string
       add :type, :string
       add :hash, :binary
       add :content, :binary

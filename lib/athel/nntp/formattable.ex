@@ -1,22 +1,37 @@
-defmodule Athel.Nntp.Format do
-  alias Athel.Article
+defprotocol Athel.Nntp.Formattable do
+  @spec format(t) :: iodata
+  def format(formattable)
+end
 
-  @spec format_multiline(list(String.t | String.Chars.t)) :: String.t
-  def format_multiline(lines) do
-    [Enum.reduce(lines, [], &escape_line/2), ".\r\n"]
-    |> IO.iodata_to_binary
+defimpl Athel.Nntp.Formattable, for: List do
+  def format(list) do
+    [Enum.reduce(list, [], &escape_line/2), ".\r\n"]
   end
 
-  @spec format_article(Athel.Article.t) :: String.t
-  def format_article(article) do
-    headers = article |> Article.get_headers |> format_headers
-    body = article.body |> format_multiline
-
-    [headers, body] |> IO.iodata_to_binary
+  defp escape_line(<<".", rest :: binary>>, acc) do
+    [acc, "..", rest, "\r\n"]
   end
 
-  @spec format_headers(%{optional(String.t) => String.t}) :: String.t
-  def format_headers(headers) do
+  defp escape_line(line, acc) when is_number(line) or is_boolean(line) do
+    escape_line(to_string(line), acc)
+  end
+
+  defp escape_line(line, acc) do
+    [acc, line, "\r\n"]
+  end
+
+end
+
+defimpl Athel.Nntp.Formattable, for: Range do
+  alias Athel.Nntp.Formattable
+
+  def format(range) do
+    range |> Enum.to_list |> Formattable.format
+  end
+end
+
+defimpl Athel.Nntp.Formattable, for: Map do
+  def format(headers) do
     [Enum.reduce(headers, [], &format_header/2), "\r\n"]
   end
 
@@ -28,53 +43,5 @@ defmodule Athel.Nntp.Format do
     [acc, [key, ": ", value, "\r\n"]]
   end
 
-  defp escape_line(<<".", rest :: binary>>, acc) do
-    [acc, "..", rest, "\r\n"]
-  end
-
-  defp escape_line(line, acc) when is_binary(line) do
-    [acc, line, "\r\n"]
-  end
-
-  defp escape_line(line, acc) do
-    escape_line(to_string(line), acc)
-  end
-
 end
 
-defprotocol Athel.Nntp.Formattable do
-  @spec format(t) :: String.t
-  def format(formattable)
-end
-
-defimpl Athel.Nntp.Formattable, for: List do
-  import Athel.Nntp.Format
-
-  def format(list) do
-    format_multiline(list)
-  end
-end
-
-defimpl Athel.Nntp.Formattable, for: Range do
-  import Athel.Nntp.Format
-
-  def format(range) do
-    format_multiline(range)
-  end
-end
-
-defimpl Athel.Nntp.Formattable, for: Map do
-  import Athel.Nntp.Format
-
-  def format(headers) do
-    format_headers(headers)
-  end
-end
-
-defimpl Athel.Nntp.Formattable, for: Athel.Article do
-  import Athel.Nntp.Format
-
-  def format(article) do
-    format_article(article)
-  end
-end

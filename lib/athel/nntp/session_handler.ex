@@ -161,7 +161,12 @@ defmodule Athel.Nntp.SessionHandler do
   def get_article(args, state), do: retrieve(&(&1), args, state)
 
   command "HEAD", :get_article_headers, max_args: 1
-  def get_article_headers(args, state), do: retrieve(&Article.get_headers/1, args, state)
+  def get_article_headers(args, state) do
+    retrieve(fn article ->
+      {headers, _} = Article.get_headers(article)
+      headers
+    end, args, state)
+  end
 
   command "BODY", :get_article_body, max_args: 1
   def get_article_body(args, state), do: retrieve(&(&1.body), args, state)
@@ -181,7 +186,7 @@ defmodule Athel.Nntp.SessionHandler do
 
     cond do
       !is_nil(message_id) ->
-        case Repo.get(Article, message_id) do
+        case NntpService.get_article(message_id) do
           nil ->
             {:continue, {430, "No such article"}}
           article ->
@@ -219,7 +224,7 @@ defmodule Athel.Nntp.SessionHandler do
   end
 
   defp retrieve_response(extractor, index, article) do
-    extracted = article |> Repo.preload(:groups) |> extractor.()
+    extracted = article |> extractor.()
     {220, "#{index} <#{article.message_id}>", extracted}
   end
 

@@ -30,13 +30,19 @@ defmodule Athel.NntpService do
   @spec get_article(String.t) :: Article.t | nil
   def get_article(message_id) do
     Repo.one(from a in Article,
-      where: a.message_id == ^message_id and a.status == "active")
+      where: a.message_id == ^message_id and a.status == "active",
+      left_join: at in assoc(a, :attachments),
+      preload: [attachments: at],
+      preload: [:groups])
   end
 
   @spec get_articles_created_after(String.t, Timex.DateTime) :: list(Article.t)
   def get_articles_created_after(group_name, date) do
     Repo.all(from a in Article,
       join: g in assoc(a, :groups),
+      left_join: at in assoc(a, :attachments),
+      preload: [attachments: at],
+      preload: [:groups],
       where: a.date > ^date and g.name == ^group_name,
       order_by: a.inserted_at)
   end
@@ -61,9 +67,12 @@ defmodule Athel.NntpService do
     lower_bound = max(group.low_watermark, lower_bound)
     Article
     |> where(status: "active")
+    |> join(:left, [a], at in assoc(a, :attachments))
+    |> preload([_a, at], attachments: at)
+    |> preload(:groups)
     |> offset(^lower_bound)
     |> order_by(:date)
-    |> select([a, i], {i.index, a})
+    |> select([a, _at, i], {i.index, a})
     # subqueries with fragments in the `select` not supported, whole query must
     # be a fragment to be joined on
     # make `row_number()` zero-indexed to match up with `offset`

@@ -171,6 +171,7 @@ defmodule Athel.Nntp.ServerTest do
     article = Article
     |> Repo.get("01@test.com")
     |> Repo.preload(:groups)
+    |> Repo.preload(:attachments)
     |> Formattable.format
 
     assert send_recv(socket, "ARTICLE <nananananana@batman>\r\n") =~ status(430)
@@ -188,11 +189,12 @@ defmodule Athel.Nntp.ServerTest do
 
   test "HEAD", %{socket: socket} do
     setup_models(2)
-    headers = Article
+    {headers, _} = Article
     |> Repo.get("01@test.com")
     |> Repo.preload(:groups)
+    |> Repo.preload(:attachments)
     |> Article.get_headers
-    |> Formattable.format
+    headers = headers |> Formattable.format
 
     assert send_recv(socket, "HEAD <01@test.com>\r\n") == "220 0 <01@test.com>\r\n#{headers}"
 
@@ -204,6 +206,7 @@ defmodule Athel.Nntp.ServerTest do
     body = Article
     |> Repo.get("01@test.com")
     |> Repo.preload(:groups)
+    |> Repo.preload(:attachments)
     |> (fn group -> group.body end).()
     |> Formattable.format
 
@@ -232,6 +235,7 @@ defmodule Athel.Nntp.ServerTest do
       subject: "MY WAR",
       from: ~s("MARDAR" <mardar@wardar.karfar>),
       groups: [group, other_group],
+      attachments: [],
       content_type: "text/plain",
       body: ["YOU'RE ONE OF THEM"]
     }
@@ -303,6 +307,7 @@ defmodule Athel.Nntp.ServerTest do
       subject: "Is this me?",
       date: Timex.to_datetime({{2012, 7, 4}, {4, 51, 23}}, "Etc/UTC"),
       parent_message_id: nil,
+      attachments: [],
       content_type: "text/plain",
       body: ["I cannot fathom why"]
     }

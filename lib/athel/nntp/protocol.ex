@@ -146,7 +146,7 @@ defmodule Athel.Nntp.Protocol do
   end
 
   defp send_status(%State{transport: transport, socket: socket}, {code, message, body}) do
-    body = Formattable.format(body)
+    body = body |> Formattable.format
     case transport.send(socket, "#{code} #{message}\r\n#{body}") do
       :ok -> ()
       {:error, reason} ->

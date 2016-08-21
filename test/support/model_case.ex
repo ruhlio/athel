@@ -13,6 +13,8 @@ defmodule Athel.ModelCase do
   """
 
   use ExUnit.CaseTemplate
+  alias Ecto.Changeset
+  alias Athel.Repo
 
   using do
     quote do
@@ -63,13 +65,12 @@ defmodule Athel.ModelCase do
 
   @spec setup_models(non_neg_integer) :: Athel.Group.t
   def setup_models(article_count \\ 0) do
-    group = Athel.Repo.insert!(%Athel.Group {
-      name: "fun.times",
-      description: "Funners of the world unite",
-      status: "y",
-      low_watermark: 0,
-      high_watermark: 0
-    })
+    group = Athel.Repo.insert!(
+      %Athel.Group{name: "fun.times",
+                   description: "Funners of the world unite",
+                   status: "y",
+                   low_watermark: 0,
+                   high_watermark: 0})
 
     if article_count > 0 do
       for index <- 0..(article_count - 1) do
@@ -83,8 +84,8 @@ defmodule Athel.ModelCase do
               content_type: "text/plain",
               body: ["LET'S ROCK OUT FOR JESUS & AMERICA"],
               status: "active"})
-              |> Ecto.Changeset.put_assoc(:groups, [group])
-        Athel.Repo.insert!(changeset)
+              |> Changeset.put_assoc(:groups, [group])
+        Athel.Repo.insert!(changeset) |> Repo.preload(:attachments)
       end
     end
 
