@@ -5,20 +5,23 @@ defmodule Athel.MultipartTest do
 
   test "unsupported MIME version" do
     assert get_boundary(%{"MIME-VERSION" => "0.3"}) == {:error, :invalid_mime_version}
-    assert get_boundary(%{}) == {:error, :invalid_mime_version}
+    assert get_boundary(%{}) == {:ok, nil}
   end
 
   test "content type header" do
     error = {:error, :unhandled_multipart_type}
     headers = %{"MIME-VERSION" => "1.0", "CONTENT-TYPE" => nil}
 
-    assert get_boundary(headers) == error
-    assert get_boundary(%{headers | "CONTENT-TYPE" => "text/plain"}) == error
     assert get_boundary(%{headers | "CONTENT-TYPE" =>
                            {"multipart/parallel", %{"boundary" => "word"}}}) == error
+    assert get_boundary(%{headers | "CONTENT-TYPE" => "multipart/mixed"}) == {:error, :invalid_multipart_type}
 
     assert get_boundary(%{headers | "CONTENT-TYPE" =>
-                         {"multipart/mixed", %{"boundary" => "persnickety"}}}) == {:ok, "persnickety"}
+                           {"multipart/mixed", %{"boundary" => "persnickety"}}}) == {:ok, "persnickety"}
+    assert get_boundary(headers) == {:ok, nil}
+    assert get_boundary(%{headers | "CONTENT-TYPE" =>
+                           {"text/plain", %{"charset" => "utf8"}}}) == {:ok, nil}
+    assert get_boundary(%{headers | "CONTENT-TYPE" => "text/plain"}) == {:ok, nil}
   end
 
   test "no attachments" do

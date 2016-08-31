@@ -2,16 +2,29 @@ defmodule Athel.Multipart do
 
   @type attachment :: %{type: String.t, filename: String.t, content: binary}
 
-  @spec get_boundary(%{optional(String.t) => String.t}) :: {:ok, String.t} | {:error, atom}
+  @spec get_boundary(%{optional(String.t) => String.t}) :: {:ok, String.t | nil} | {:error, atom}
   def get_boundary(headers) do
     mime_version = headers["MIME-VERSION"]
     content_type = headers["CONTENT-TYPE"]
     case mime_version do
       "1.0" ->
         case content_type do
-          {"multipart/mixed", %{"boundary" => boundary}} -> {:ok, boundary}
-          _ -> {:error, :unhandled_multipart_type}
+          {"multipart/mixed", %{"boundary" => boundary}} ->
+            {:ok, boundary}
+          {type, _} ->
+            if is_multipart(type) do
+              {:error, :unhandled_multipart_type}
+            else
+              {:ok, nil}
+            end
+          type ->
+            if is_multipart(type) do
+              {:error, :invalid_multipart_type}
+            else
+              {:ok, nil}
+            end
         end
+      nil -> {:ok, nil}
       _ ->
         {:error, :invalid_mime_version}
     end
@@ -24,6 +37,9 @@ defmodule Athel.Multipart do
   catch
     reason -> {:error, reason}
   end
+
+  defp is_multipart(content_type) when is_nil(content_type), do: false
+  defp is_multipart(content_type), do: content_type =~ ~r/^multipart\//
 
   defp cast_attachment({headers, body}) do
     type = get_type(headers)
