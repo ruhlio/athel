@@ -2,7 +2,7 @@ defmodule Athel.NntpServiceTest do
   use Athel.ModelCase
 
   import Athel.NntpService
-  alias Athel.{Article, Group}
+  alias Athel.{Group, Article}
 
   test "get groups" do
     setup_models()
@@ -79,30 +79,92 @@ defmodule Athel.NntpServiceTest do
   test "post" do
     group = setup_models()
 
-    {:error, changeset} = post_article(%{"Newsgroups" => "heyo"}, [])
+    {:error, changeset} = post_article(%{"NEWSGROUPS" => "heyo"}, [])
     assert error(changeset, :groups) == "is invalid"
 
     {:error, changeset} = post_article(%{}, [])
     assert error(changeset, :groups) == "is invalid"
 
-    {:error, changeset} = post_article(%{"References" => "nothing"}, [])
+    {:error, changeset} = post_article(%{"REFERENCES" => "nothing"}, [])
     assert error(changeset, :parent) == "is invalid"
 
     headers = %{
-      "From" => "Triple One",
-      "Subject" => "Colors",
-      "Content-Type" => "text/plain",
-      "Newsgroups" => "fun.times"
+      "FROM" => "Triple One",
+      "SUBJECT" => "Colors",
+      "CONTENT-TYPE" => "text/plain",
+      "NEWSGROUPS" => "fun.times"
     }
     body = ["All I see are these colors", "we walk with distant lovers", "but really what is it all to me"]
     {:ok, posted_article} = post_article(headers, body)
 
     article = Repo.get(Article, posted_article.message_id) |> Repo.preload(:groups)
-    assert article.from == headers["From"]
-    assert article.subject == headers["Subject"]
-    assert article.content_type == headers["Content-Type"]
+    assert article.from == headers["FROM"]
+    assert article.subject == headers["SUBJECT"]
+    assert article.content_type == headers["CONTENT-TYPE"]
     assert article.body == body
     assert article.groups == [group]
+  end
+
+  test "post with attachments" do
+    setup_models()
+
+    headers =
+      %{"SUBJECT" => "gnarly",
+        "FROM" => "Chef Mandude <surferdude88@hotmail.com>",
+        "NEWSGROUPS" => "fun.times",
+        "MIME-VERSION" => "1.0",
+        "CONTENT-TYPE" => {"multipart/mixed", %{"boundary" => "surfsup"}}}
+    body =
+      ["--surfsup",
+       "Content-Transfer-Encoding: base64",
+       "Content-Disposition: attachment; filename=\"phatwave.jpg\"",
+       "",
+       "TkFVR0hU",
+       "--surfsup--"]
+    {:ok, article} = post_article(headers, body)
+
+    assert article.body == []
+    [attachment] = article.attachments
+    assert attachment.filename == "phatwave.jpg"
+    assert attachment.content == "NAUGHT"
+  end
+
+  test "post takes first attachment content as body if it is text without filename" do
+    setup_models()
+
+    headers =
+      %{"SUBJECT" => "gnarly",
+        "FROM" => "Chef Mandude <surferdude88@hotmail.com>",
+        "NEWSGROUPS" => "fun.times",
+        "MIME-VERSION" => "1.0",
+        "CONTENT-TYPE" => {"multipart/mixed", %{"boundary" => "surfsup"}}}
+    single_attachment_body =
+      ["--surfsup",
+       "Content-Transfer-Encoding: base64",
+       "",
+       "Q2FuJ3QgZ2V0IG15DQpsaW5lIGVuZGluZ3MKY29uc2lzdGVudA1pIHF1aXQ=",
+       "--surfsup--"]
+    multi_attachment_body =
+      ["--surfsup",
+       "Content-Transfer-Encoding: base64",
+       "",
+       "Q2FuJ3QgZ2V0IG15DQpsaW5lIGVuZGluZ3MKY29uc2lzdGVudA1pIHF1aXQ=",
+       "--surfsup",
+       "Content-Transfer-Encoding: base64",
+       "Content-Disposition: attachment; filename=\"turbo_killer.gif\"",
+       "",
+       "c2htb2tpbic=",
+       "--surfsup--"]
+    {:ok, single_attachment_article} = post_article(headers, single_attachment_body)
+    {:ok, multi_attachment_article} = post_article(headers, multi_attachment_body)
+
+    assert single_attachment_article.body == ["Can't get my", "line endings", "consistent", "i quit"]
+    assert multi_attachment_article.body == single_attachment_article.body
+
+    assert single_attachment_article.attachments == []
+    [attachment] = multi_attachment_article.attachments
+    assert attachment.filename == "turbo_killer.gif"
+    assert attachment.content == "shmokin'"
   end
 
   test "take" do
@@ -110,12 +172,12 @@ defmodule Athel.NntpServiceTest do
 
     date = Timex.to_datetime({{2012, 7, 4}, {4, 51, 23}}, "Etc/GMT+6")
     headers = %{
-      "Message-ID" => "<not@really.here>",
-      "Date" => "Tue, 04 Jul 2012 04:51:23 -0600",
-      "From" => "ur mum",
-      "Subject" => "heehee",
-      "Content-Type" => "text/plain",
-      "Newsgroups" => "fun.times"
+      "MESSAGE-ID" => "<not@really.here>",
+      "DATE" => "Tue, 04 Jul 2012 04:51:23 -0600",
+      "FROM" => "ur mum",
+      "SUBJECT" => "heehee",
+      "CONTENT-TYPE" => "text/plain",
+      "NEWSGROUPS" => "fun.times"
     }
     body = ["brass monkey"]
     {:ok, taken_article} = take_article(headers, body)

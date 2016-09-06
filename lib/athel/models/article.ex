@@ -34,10 +34,11 @@ defmodule Athel.Article do
 
   def changeset(article, params \\ %{}) do
     article
-    |> cast(params, [:message_id, :from, :subject, :content_type, :body, :status])
+    |> cast(params, [:message_id, :from, :subject, :body, :status])
     |> cast_assoc(:groups)
-    |> parse_date(params[:date])
+    |> cast_date(params)
     |> parse_message_id
+    |> cast_content_type(params)
     |> cast_assoc(:parent, required: false)
     |> validate_required([:subject, :date, :content_type, :body])
     |> validate_inclusion(:status, ["active", "banned"])
@@ -71,12 +72,25 @@ defmodule Athel.Article do
     end)
   end
 
-  defp parse_date(changeset, date) do
+  defp cast_date(changeset, params) do
+    date = params[:date]
     parse_value(changeset, :date, fn _ ->
       if is_binary(date) do
         Timex.parse(date, @date_format, Timex.Parse.DateTime.Tokenizers.Strftime)
       else
         {:ok, date}
+      end
+    end)
+  end
+
+  defp cast_content_type(changeset, params) do
+    content_type = params[:content_type]
+    parse_value(changeset, :content_type, fn _ ->
+      case content_type do
+        nil -> {:ok, "text/plain"}
+        #TODO: handle charset param
+        {type, _} -> {:ok, type}
+        type -> {:ok, type}
       end
     end)
   end

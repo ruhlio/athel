@@ -3,7 +3,7 @@ defmodule Athel.NntpService do
 
   import Ecto.Query
   alias Ecto.{Changeset, UUID}
-  alias Athel.{Repo, Group, Article}
+  alias Athel.{Repo, Group, Article, Multipart}
 
   @type changeset_params :: %{optional(binary) => term} | %{optional(atom) => term}
   @type headers :: %{optional(String.t) => String.t}
@@ -88,43 +88,45 @@ defmodule Athel.NntpService do
 
   @spec post_article(headers, list(String.t)) :: new_article_result
   def post_article(headers, body) do
-    save_article(headers,
+    save_article(headers, body,
       %{message_id: generate_message_id(),
-        from: headers["From"],
-        subject: headers["Subject"],
+        from: headers["FROM"],
+        subject: headers["SUBJECT"],
         date: Timex.now(),
-        content_type: headers["Content-Type"],
-        body: body,
+        content_type: headers["CONTENT-TYPE"],
         status: "active"})
   end
 
   @spec take_article(headers, list(String.t)) :: new_article_result
   def take_article(headers, body) do
-    params = %{
-      message_id: headers["Message-ID"],
-      date: headers["Date"],
-      from: headers["From"],
-      subject: headers["Subject"],
-      content_type: headers["Content-Type"],
-      body: body,
-      status: "active"
-    }
-    save_article(headers, params)
+    save_article(headers, body,
+      %{message_id: headers["MESSAGE-ID"],
+        date: headers["DATE"],
+        from: headers["FROM"],
+        subject: headers["SUBJECT"],
+        content_type: headers["CONTENT-TYPE"],
+        status: "active"})
   end
 
-  defp save_article(headers, params) do
+  defp save_article(headers, body, params) do
+    with {:ok, {body, attachments}} <- read_body(headers, body) do
+      changeset = Article.changeset(%Article{}, Map.put(params, :body, body))
+      |> set_groups(headers)
+      |> set_parent(headers)
+      |> Changeset.put_assoc(:attachments, attachments)
+
+      Repo.insert(changeset)
+    end
+  end
+
+  defp set_groups(changeset, headers) do
     group_names = headers
-    |> Map.get("Newsgroups", "")
+    |> Map.get("NEWSGROUPS", "")
     |> String.split(",")
     |> Enum.map(&String.trim/1)
     groups = Repo.all(from g in Group, where: g.name in ^group_names)
-    parent_message_id = headers["References"]
-    parent = unless is_nil(parent_message_id) do
-      Repo.get(Article, parent_message_id)
-    end
-    changeset = Article.changeset(%Article{}, params)
 
-    changeset = cond do
+    cond do
       length(groups) == 0 || length(group_names) != length(groups) ->
         Changeset.add_error(changeset, :groups, "is invalid")
       Enum.any?(groups, &(&1.status == "n")) ->
@@ -133,14 +135,47 @@ defmodule Athel.NntpService do
       true ->
         Changeset.put_assoc(changeset, :groups, groups)
     end
+  end
 
-    changeset = if is_nil(parent) && !is_nil(parent_message_id) do
+  defp set_parent(changeset, headers) do
+    parent_message_id = headers["REFERENCES"]
+    parent = unless is_nil(parent_message_id) do
+      Repo.get(Article, parent_message_id)
+    end
+
+    if is_nil(parent) && !is_nil(parent_message_id) do
       Changeset.add_error(changeset, :parent, "is invalid")
     else
       Changeset.put_assoc(changeset, :parent, parent)
     end
+  end
 
-    Repo.insert(changeset)
+  defp read_body(headers, body) do
+    case Multipart.get_boundary(headers) do
+      {:ok, nil} ->
+        {:ok, {body, []}}
+      {:ok, boundary} ->
+        case Multipart.read_attachments(body, boundary) do
+          {:ok, attachments} -> {:ok, get_attachment_body(attachments)}
+          error -> error
+        end
+      error ->
+        error
+    end
+  end
+
+  defp get_attachment_body([]) do
+    {[], []}
+  end
+
+  defp get_attachment_body(attachments) do
+    [first | rest] = attachments
+    if is_nil(first.filename) do
+      body = first.content |> String.split(~r/(\r\n)|\n|\r/)
+      {body, rest}
+    else
+      {[], attachments}
+    end
   end
 
   @spec new_topic(list(Group.t), changeset_params) :: new_article_result
@@ -157,7 +192,7 @@ defmodule Athel.NntpService do
   end
 
   defp generate_message_id() do
-    #todo: pull in hostname
+    #TODO: pull in hostname
     id = UUID.generate() |> String.replace("-", ".")
     "#{id}@localhost"
   end

@@ -108,7 +108,7 @@ defmodule Athel.MultipartTest do
        "Q2FuJ3QgZ2V0IG15DQpsaW5lIGVuZGluZ3MKY29uc2lzdGVudA1pIHF1aXQ=",
        "--planter--"],
       "planter")
-    assert attachment.content == ["Can't get my", "line endings", "consistent", "i quit"]
+    assert attachment.content == "Can't get my\r\nline endings\nconsistent\ri quit"
   end
 
   test "attachment without headers" do

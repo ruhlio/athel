@@ -79,7 +79,7 @@ defmodule Athel.Multipart do
         case body do
           [body] ->
             case Base.decode64(body) do
-              {:ok, body} -> String.split(body, ~r/(\r\n)|\n|\r/)
+              {:ok, body} -> body
               :error -> throw :invalid_encoding
             end
           _ -> throw :invalid_encoding
