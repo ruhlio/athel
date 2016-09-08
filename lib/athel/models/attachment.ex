@@ -19,8 +19,9 @@ defmodule Athel.Attachment do
 
   def changeset(struct, params \\ %{}) do
     struct
-    |> cast(params, [:type, :content])
+    |> cast(params, [:content])
     |> hash_content
+    |> determine_type
     |> validate_required([:type, :hash, :content])
   end
 
@@ -30,6 +31,19 @@ defmodule Athel.Attachment do
       content ->
         {:ok, hash} = Multihash.encode(:sha1, :crypto.hash(:sha, content))
         put_change(changeset, :hash, hash)
+    end
+  end
+
+  defp determine_type(changeset = %Changeset{changes: changes}) do
+    case changes[:content] do
+      nil -> add_error(changeset, :type, "unrecognized type of content")
+      content ->
+        case :emagic.from_buffer(content) do
+          {:ok, type} ->
+            put_change(changeset, :type, type)
+          {:error, reason} ->
+            add_error(changeset, :type, to_string(reason))
+        end
     end
   end
 

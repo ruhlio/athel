@@ -25,4 +25,12 @@ defmodule Athel.AttachmentTest do
     assert changeset.changes[:hash] == hash
   end
 
+  test "determines content type" do
+    changeset = Attachment.changeset(%Attachment{},
+      %{@valid_attrs | content: "<html><body><h1>BIG TEXT</h1></body></html>"})
+    assert changeset.changes[:type] == "text/html"
+
+    assert_invalid(%Attachment{}, :type, <<0, 0, 0, 0>>, "unrecognized type of content")
+  end
+
 end

@@ -4,7 +4,7 @@ defmodule Athel.Mixfile do
   def project do
     [app: :athel,
      version: "0.0.1",
-     elixir: "~> 1.2",
+     elixir: "~> 1.3",
      elixirc_paths: elixirc_paths(Mix.env),
      compilers: [:phoenix, :gettext] ++ Mix.compilers,
      build_embedded: Mix.env == :prod,
@@ -41,6 +41,7 @@ defmodule Athel.Mixfile do
       {:timex, "~> 3.0"},
       {:timex_ecto, "~> 3.0"},
       {:ex_multihash, "~> 1.0"},
+      {:emagic, github: "JasonZhu/erlang_magic"},
       {:credo, "~> 0.4", only: [:dev, :test]}
     ]
   end
