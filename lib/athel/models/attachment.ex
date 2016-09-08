@@ -18,11 +18,14 @@ defmodule Athel.Attachment do
   end
 
   def changeset(struct, params \\ %{}) do
+    max_attachment_size = Application.fetch_env!(:athel, Athel.Nntp)[:max_attachment_size]
+
     struct
     |> cast(params, [:content])
     |> hash_content
     |> determine_type
     |> validate_required([:type, :hash, :content])
+    |> validate_length(:content, max: max_attachment_size)
   end
 
   defp hash_content(changeset = %Changeset{changes: changes}) do

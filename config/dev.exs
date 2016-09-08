@@ -47,4 +47,5 @@ config :athel, Athel.Nntp,
   pool_size: 10,
   timeout: 5_000,
   keyfile: Path.expand("../priv/testing.key", __DIR__),
-  certfile: Path.expand("../priv/testing.crt", __DIR__)
+  certfile: Path.expand("../priv/testing.crt", __DIR__),
+  max_attachment_size: 20_000_000

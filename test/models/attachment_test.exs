@@ -33,4 +33,10 @@ defmodule Athel.AttachmentTest do
     assert_invalid(%Attachment{}, :type, <<0, 0, 0, 0>>, "unrecognized type of content")
   end
 
+  test "limits content length" do
+    assert Attachment.changeset(%Attachment{}, %{@valid_attrs | content: "under 100"}).valid?
+    long_content = Stream.repeatedly(fn -> "f" end) |> Enum.take(101) |> Enum.join("")
+    assert_invalid(%Attachment{}, :content, long_content, "should be at most")
+  end
+
 end
