@@ -1,4 +1,3 @@
-limit attachment size
 limit raw header/body size
 ban/delete by post/poster
 store hashed IP address of anonymous posters

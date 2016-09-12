@@ -132,7 +132,7 @@ defmodule Athel.Nntp.Parser do
 
   defp headers(input, acc) do
     {name, rest} = header_name(input, [])
-    {value, rest} = line(skip_whitespace(rest))
+    {value, rest} = header_value(skip_whitespace(rest), [])
     headers(rest, Map.put(acc, name, value))
   end
 
@@ -148,6 +148,86 @@ defmodule Athel.Nntp.Parser do
 
   defp header_name("", _) do
     need_more()
+  end
+
+  defp header_value("", _) do
+    need_more()
+  end
+
+  defp header_value(<<"\r\n", rest :: binary>>, acc) do
+    {acc |> IO.iodata_to_binary, rest}
+  end
+
+  defp header_value(<<";", rest :: binary>>, acc) do
+    {params, rest} = header_params(rest, %{})
+    {{acc |> IO.iodata_to_binary, params}, rest}
+  end
+
+  defp header_value(<<char, rest :: binary>>, acc) do
+    header_value(rest, [acc, char])
+  end
+
+  defp header_params(rest = <<"\r\n", _ :: binary>>, params) do
+    {params, rest}
+  end
+
+  defp header_params("", _) do
+    need_more()
+  end
+
+  defp header_params(input, params) do
+    {param_name, rest} = header_param_name(input, [])
+    {param_value, rest} = header_param_value(rest, {[], false})
+    header_params(rest, params |> Map.put(param_name, param_value))
+  end
+
+  defp header_param_name("", _) do
+    need_more()
+  end
+
+  # eat leading whitespace
+  defp header_param_name(<<char, rest :: binary>>, []) when char in ' \t' do
+    header_param_name(rest, [])
+  end
+
+  defp header_param_name(<<"=", rest :: binary>>, acc) do
+    {acc |> IO.iodata_to_binary, rest}
+  end
+
+  defp header_param_name(<<char, rest :: binary>>, acc) do
+    if char in '\r\n', do: syntax_error(:header_param_name)
+    header_param_name(rest, [acc, char])
+  end
+
+  defp header_param_value("", _) do
+    need_more()
+  end
+
+  defp header_param_value(<<"\r\n", rest :: binary>>, {acc, _}) do
+    {acc |> IO.iodata_to_binary, rest}
+  end
+
+  defp header_param_value(<<";", rest :: binary>>, {acc, _}) do
+    {acc |> IO.iodata_to_binary, rest}
+  end
+
+  # handle boundary="commadelimited"
+  defp header_param_value(<<"\"", rest :: binary>>, {acc, delimited}) do
+    cond do
+      delimited ->
+        case Regex.run ~r/^\s*(;?(.*?\r\n))/m, rest do
+          nil -> syntax_error(:header_param_value)
+          [_, _, rest] -> {acc |> IO.iodata_to_binary, rest}
+        end
+      IO.iodata_to_binary(acc) =~ ~r/^\s*$/ ->
+        header_param_value(rest, {[], true})
+      not delimited ->
+        header_param_value(rest, {[acc, "\""], false})
+    end
+  end
+
+  defp header_param_value(<<char, rest :: binary>>, {acc, delimited}) do
+    header_param_value(rest, {[acc, char], delimited})
   end
 
   defp command(input) do

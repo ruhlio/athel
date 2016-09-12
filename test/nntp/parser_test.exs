@@ -60,6 +60,48 @@ defmodule Athel.Nntp.ParserTest do
     assert headers == {:ok, %{"Content-Type" => "funky/nasty", "Boogie-Nights" => "You missed that boat"}, ""}
   end
 
+  test "header value with parameters" do
+    result = parse_headers(
+      ["Content-Type: attachment; boundary=hearsay; pants=off\r\n",
+       "\r\n"])
+    assert result == {:ok,
+                      %{"Content-Type" =>
+                        {"attachment",
+                         %{"boundary" => "hearsay",
+                           "pants" => "off"}}},
+                      ""}
+  end
+
+  test "header value with delimited parameter" do
+    result = parse_headers(
+      ["Content-Type: attachment; boundary= \"hearsay\" ; unnecessary=\t\"unfortunately\"   \r\n",
+       "\r\n"])
+    assert result == {:ok,
+                      %{"Content-Type" =>
+                        {"attachment",
+                         %{"boundary" => "hearsay",
+                           "unnecessary" => "unfortunately"}}},
+                      ""}
+
+    result = parse_headers(
+      ["Content-Type: form-data; boundary=keep_this\"\r\n",
+      "\r\n"])
+    assert result == {:ok,
+                      %{"Content-Type" =>
+                        {"form-data",
+                         %{"boundary" => "keep_this\""}}},
+                      ""}
+  end
+
+  test "unterminated header entry parameters" do
+    assert parse_headers("Content-Type: attachment; boundary") == :need_more
+    assert parse_headers("Content-Type: attachment; boundary=nope;") == :need_more
+  end
+
+  test "prematurely terminated header param" do
+    assert parse_headers("Content-Type: attachment; boundary\r\n") == {:error, :header_param_name}
+  end
+
   test "header name with whitespace" do
     assert parse_headers("OH YEAH: BROTHER\r\n\r\n") == {:error, :header_name}
   end
