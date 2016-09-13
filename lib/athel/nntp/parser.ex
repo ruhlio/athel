@@ -137,7 +137,7 @@ defmodule Athel.Nntp.Parser do
   end
 
   defp header_name(<<":", rest :: binary>>, acc) do
-    {IO.iodata_to_binary(acc), rest}
+    {acc |> IO.iodata_to_binary |> String.upcase, rest}
   end
 
   defp header_name(<<next, rest :: binary>>, acc) do

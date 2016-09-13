@@ -57,7 +57,10 @@ defmodule Athel.Nntp.ParserTest do
 
   test "valid headers" do
     headers = parse_headers(["Content-Type: funky/nasty\r\nBoogie-Nights: You missed that boat\r\n", "\r\n"])
-    assert headers == {:ok, %{"Content-Type" => "funky/nasty", "Boogie-Nights" => "You missed that boat"}, ""}
+    assert headers == {:ok,
+                       %{"CONTENT-TYPE" => "funky/nasty",
+                         "BOOGIE-NIGHTS" => "You missed that boat"},
+                       ""}
   end
 
   test "header value with parameters" do
@@ -65,7 +68,7 @@ defmodule Athel.Nntp.ParserTest do
       ["Content-Type: attachment; boundary=hearsay; pants=off\r\n",
        "\r\n"])
     assert result == {:ok,
-                      %{"Content-Type" =>
+                      %{"CONTENT-TYPE" =>
                         {"attachment",
                          %{"boundary" => "hearsay",
                            "pants" => "off"}}},
@@ -77,7 +80,7 @@ defmodule Athel.Nntp.ParserTest do
       ["Content-Type: attachment; boundary= \"hearsay\" ; unnecessary=\t\"unfortunately\"   \r\n",
        "\r\n"])
     assert result == {:ok,
-                      %{"Content-Type" =>
+                      %{"CONTENT-TYPE" =>
                         {"attachment",
                          %{"boundary" => "hearsay",
                            "unnecessary" => "unfortunately"}}},
@@ -87,7 +90,7 @@ defmodule Athel.Nntp.ParserTest do
       ["Content-Type: form-data; boundary=keep_this\"\r\n",
       "\r\n"])
     assert result == {:ok,
-                      %{"Content-Type" =>
+                      %{"CONTENT-TYPE" =>
                         {"form-data",
                          %{"boundary" => "keep_this\""}}},
                       ""}
