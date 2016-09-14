@@ -50,4 +50,4 @@ config :athel, Athel.Nntp,
   certfile: Path.expand("../priv/testing.crt", __DIR__),
   max_request_size: 75_000_000,
   max_attachment_size: 20_000_000,
-  max_attachment_count: 3,
+  max_attachment_count: 3

@@ -1,3 +1,2 @@
-limit raw header/body size
 ban/delete by post/poster
-store hashed IP address of anonymous posters
+store hashed/encrypted/plain? IP address of anonymous posters
