@@ -167,6 +167,32 @@ defmodule Athel.NntpServiceTest do
     assert attachment.content == "shmokin'"
   end
 
+  test "post with too many attachments/plaintext attachments handling" do
+    setup_models()
+
+    headers =
+      %{"SUBJECT" => "gnarly",
+        "FROM" => "Chef Mandude <surferdude88@hotmail.com>",
+        "NEWSGROUPS" => "fun.times",
+        "MIME-VERSION" => "1.0",
+        "CONTENT-TYPE" => {"multipart/mixed", %{"boundary" => "surfsup"}}}
+    body =
+      ["--surfsup",
+       "body",
+       "--surfsup",
+       "one",
+       "--surfsup",
+       "two",
+       "--surfsup",
+       "three",
+       "--surfsup",
+       "four",
+       "--surfsup--"]
+
+    {:error, changeset} = post_article(headers, body)
+    assert changeset.errors[:attachments] == {"limited to 3", []}
+  end
+
   test "take" do
     setup_models()
 

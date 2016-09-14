@@ -113,6 +113,7 @@ defmodule Athel.NntpService do
       changeset = Article.changeset(%Article{}, Map.put(params, :body, body))
       |> set_groups(headers)
       |> set_parent(headers)
+      |> set_attachments(attachments)
       |> Changeset.put_assoc(:attachments, attachments)
 
       Repo.insert(changeset)
@@ -150,13 +151,25 @@ defmodule Athel.NntpService do
     end
   end
 
+  defp set_attachments(changeset, attachments) do
+    config = Application.fetch_env!(:athel, Athel.Nntp)
+    max_attachment_count = config[:max_attachment_count]
+
+    if length(attachments) > max_attachment_count do
+      Changeset.add_error(changeset, :attachments,
+        "limited to #{max_attachment_count}")
+    else
+      Changeset.put_assoc(changeset, :attachments, attachments)
+    end
+  end
+
   defp read_body(headers, body) do
     case Multipart.get_boundary(headers) do
       {:ok, nil} ->
         {:ok, {body, []}}
       {:ok, boundary} ->
         case Multipart.read_attachments(body, boundary) do
-          {:ok, attachments} -> {:ok, get_attachment_body(attachments)}
+          {:ok, attachments} -> {:ok, split_attachments(attachments)}
           error -> error
         end
       error ->
@@ -164,19 +177,33 @@ defmodule Athel.NntpService do
     end
   end
 
-  defp get_attachment_body([]) do
-    {[], []}
-  end
+  defp split_attachments([]), do: {[], []}
 
-  defp get_attachment_body(attachments) do
+  defp split_attachments(attachments) do
     [first | rest] = attachments
     if is_nil(first.filename) do
-      body = first.content |> String.split(~r/(\r\n)|\n|\r/)
-      {body, rest}
+      body = split_body(first.content)
+      {body, rest |> join_attachment_contents}
     else
-      {[], attachments}
+      {[], attachments |> join_attachment_contents}
     end
   end
+
+  defp split_body(body) when is_list(body), do: body
+
+  defp split_body(body) do
+    body |> String.split(~r/(\r\n)|\n|\r/)
+  end
+
+  defp join_attachment_contents(attachments) do
+    attachments |> Enum.map(fn attachment ->
+      %{attachment | content: attachment.content |> join_body}
+    end)
+  end
+
+  defp join_body(body) when is_list(body), do: Enum.join(body, "\n")
+
+  defp join_body(body), do: body
 
   @spec new_topic(list(Group.t), changeset_params) :: new_article_result
   def new_topic(groups, params) do

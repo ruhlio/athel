@@ -9,7 +9,6 @@ defmodule Athel.Article do
     field :subject, :string
     field :date, Timex.Ecto.DateTime
     field :content_type, :string
-    #TODO: change to array
     field :body, {:array, :string}
 
     field :status, :string
@@ -42,7 +41,6 @@ defmodule Athel.Article do
     |> cast_assoc(:parent, required: false)
     |> validate_required([:subject, :date, :content_type, :body])
     |> validate_inclusion(:status, ["active", "banned"])
-    #TODO: validate content_type
   end
 
   def get_headers(article) do

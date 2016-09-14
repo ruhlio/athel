@@ -24,4 +24,7 @@ config :athel, Athel.Nntp,
   timeout: 5_000,
   keyfile: Path.expand("../priv/testing.key", __DIR__),
   certfile: Path.expand("../priv/testing.crt", __DIR__),
-  max_attachment_size: 100
+  max_header_size: 100,
+  max_body_size: 100,
+  max_attachment_size: 100,
+  max_attachment_count: 3
