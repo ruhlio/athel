@@ -10,7 +10,11 @@ defmodule Athel.Nntp.Protocol do
   end
 
   defmodule State do
-    defstruct [:transport, :socket, :buffer, :session_handler, :opts]
+    defstruct [:transport,
+               :socket,
+               :buffer,
+               :session_handler,
+               :opts]
     @type t :: %State{transport: :ranch_transport,
                       socket: :inet.socket,
                       buffer: iodata,
@@ -111,27 +115,35 @@ defmodule Athel.Nntp.Protocol do
     recv_command(state)
   end
 
-  defp read_and_parse(
-    state = %State{transport: transport, socket: socket, buffer: buffer, opts: opts},
-    parser) do
+  defp read_and_parse(state = %State{buffer: buffer}, parser) do
     buffer =
       case buffer do
-        [] -> read(transport, socket, buffer, opts[:timeout])
-        "" -> read(transport, socket, [], opts[:timeout])
+        [] -> read(state)
+        "" -> read(%{state | buffer: []})
         _ -> buffer
       end
 
     case parser.(buffer) do
       :need_more ->
-        next_state = %{state | buffer: read(transport, socket, buffer, opts[:timeout])}
+        next_state = %{state | buffer: read(state)}
         read_and_parse(next_state, parser)
       other -> other
     end
   end
 
-  defp read(transport, socket, buffer, timeout) do
-    case transport.recv(socket, 0, timeout) do
-      {:ok, received} -> [buffer, received]
+  defp read(%State
+    {transport: transport,
+     socket: socket,
+     buffer: buffer,
+     opts: opts}) do
+    case transport.recv(socket, 0, opts[:timeout]) do
+      {:ok, received} ->
+        buffer = [buffer, received]
+        bytes_read = IO.iodata_length(buffer)
+        if bytes_read > opts[:max_request_size] do
+          raise CommunicationError, message: "Max request buffer length exceeded"
+        end
+        buffer
       {:error, reason} ->
         raise CommunicationError, message: "Failed to read from client: #{reason}"
     end

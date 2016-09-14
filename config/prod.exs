@@ -25,7 +25,9 @@ config :athel, Athel.Nntp,
   timeout: 5_000,
   keyfile: System.get_env("NNTP_SSL_KEY_PATH"),
   certfile: System.get_env("NNTP_SSL_CERT_PATH"),
-  max_attachment_size: 20_000_000
+  max_request_size: 75_000_000,
+  max_attachment_size: 20_000_000,
+  max_attachment_count: 3
 
 # ## SSL Support
 #

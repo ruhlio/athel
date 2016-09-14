@@ -38,10 +38,18 @@ defmodule Athel.Nntp.ServerTest do
     quit(setup_socket)
   end
 
-  # test "closing connection without receiving QUIT", %{socket: socket} do
-  #   :gen_tcp.close(socket)
-     #TODO: assert CommunicationError was raised
-  # end
+  test "closing connection without receiving QUIT", %{socket: socket} do
+    #TODO: assert CommunicationError was raised
+    :gen_tcp.close(socket)
+  end
+
+  test "sending too much data", %{socket: socket} do
+    #TODO: assert CommunicationError was raised/eat error output
+    too_much_data = Stream.repeatedly(fn -> "a" end)
+    |> Enum.take(300_000)
+    :gen_tcp.send(socket, too_much_data)
+    assert :gen_tcp.recv(socket, 0) == {:error, :closed}
+  end
 
   test "too many arguments", %{socket: socket} do
     argument_counts = %{
