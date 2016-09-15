@@ -3,7 +3,7 @@ defmodule Athel.Mixfile do
 
   def project do
     [app: :athel,
-     version: "0.0.1",
+     version: "0.1.0",
      elixir: "~> 1.3",
      elixirc_paths: elixirc_paths(Mix.env),
      compilers: [:phoenix, :gettext] ++ Mix.compilers,
@@ -18,8 +18,20 @@ defmodule Athel.Mixfile do
   # Type `mix help compile.app` for more information.
   def application do
     [mod: {Athel, []},
-     applications: [:phoenix, :phoenix_pubsub, :phoenix_html, :cowboy, :logger, :gettext,
-                    :phoenix_ecto, :postgrex, :timex]]
+     applications: [:phoenix,
+                    :phoenix_pubsub,
+                    :phoenix_html,
+                    :phoenix_ecto,
+                    :cowboy,
+                    :logger,
+                    :gettext,
+                    :postgrex,
+                    :timex,
+                    #
+                    :emagic,
+                    :ex_multihash,
+                    :timex_ecto,
+                    :monad]]
   end
 
   # Specifies which paths to compile per environment.
@@ -42,6 +54,7 @@ defmodule Athel.Mixfile do
       {:timex_ecto, "~> 3.0"},
       {:ex_multihash, "~> 1.0"},
       {:emagic, github: "JasonZhu/erlang_magic"},
+      {:distillery, "~> 0.9"},
       {:credo, "~> 0.4", only: [:dev, :test]}
     ]
   end

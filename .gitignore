@@ -25,3 +25,7 @@ erl_crash.dump
 
 # emacs temp files
 .\#*
+
+# distillery
+rel/*
+!rel/config.exs
