@@ -46,10 +46,14 @@ defmodule Athel.Nntp.Protocol do
   defp recv_command(state) do
     {action, buffer} =
       case read_and_parse(state, &Parser.parse_command/1) do
-        {:ok, command, buffer} -> {GenServer.call(state.session_handler, command), buffer}
-        {:error, type} -> {{:continue, {501, "Syntax error in #{type}"}}, []}
+        {:ok, command, buffer} ->
+          {GenServer.call(state.session_handler, command), buffer}
+        {:error, type} ->
+          {{:continue, {501, "Syntax error in #{type}"}}, []}
       end
     state = %{state | buffer: buffer}
+
+    Logger.debug "Next NNTP protocol action is #{inspect action}"
 
     case action do
       {:continue, response} ->
@@ -57,11 +61,18 @@ defmodule Athel.Nntp.Protocol do
         recv_command(state)
       #TODO: count errors and kill connection if too many occur
       {:error, response} ->
+        # we're in a bad state, clear any remaining input
+        state = %{state | buffer: []}
         send_status(state, response)
         recv_command(state)
       {{:recv_article, type}, response} ->
-        send_status(state, response)
+        unless is_nil(response), do: send_status(state, response)
         recv_article(type, state)
+      # clear remaining article out of buffer without clearing any
+      # of the following commands
+      {:kill_article, response} ->
+        send_status(state, response)
+        kill_article(state)
       {:start_tls, {good_response, bad_response}} ->
         start_tls(state, good_response, bad_response)
       {:quit, response} ->
@@ -85,6 +96,22 @@ defmodule Athel.Nntp.Protocol do
       end
 
     send_status(state, response)
+    recv_command(%{state | buffer: buffer})
+  end
+
+  defp kill_article(state) do
+    buffer =
+      with {:ok, _, buffer} <- read_and_parse(state, &Parser.parse_headers/1),
+           {:ok, _, buffer} <- read_and_parse(%{state | buffer: buffer},
+             &Parser.parse_multiline/1),
+      do: buffer
+
+    buffer =
+      case buffer do
+        {:error, } -> []
+        buffer -> buffer
+      end
+
     recv_command(%{state | buffer: buffer})
   end
 

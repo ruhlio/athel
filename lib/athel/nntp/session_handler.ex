@@ -19,7 +19,7 @@ defmodule Athel.Nntp.SessionHandler do
 
   command "CAPABILITIES", :capabilities, max_args: 0
   def capabilities([], state) do
-    capabilities = ["VERSION 2", "READER", "POST", "LIST ACTIVE NEWGROUPS", "STARTTLS", "IHAVE"]
+    capabilities = ["VERSION 2", "READER", "POST", "LIST ACTIVE NEWGROUPS", "STARTTLS", "IHAVE", "STREAMING"]
     capabilities = if is_authenticated(state) do
       capabilities
     else
@@ -37,6 +37,10 @@ defmodule Athel.Nntp.SessionHandler do
   command "MODE", :mode, max_args: 1
   def mode(["READER"], _) do
     {:continue, {200, "Whatever dude"}}
+  end
+
+  def mode(["STREAM"], _) do
+    {:continue, {203, "Whatever tickles your fancy"}}
   end
 
   #TODO: LIST ACTIVE with wildmat
@@ -248,7 +252,7 @@ defmodule Athel.Nntp.SessionHandler do
     auth: [required: true]
   def take_article([id], _) do
     case extract_message_id(id) do
-      nil -> {:error, {501, "Invalid message-id"}}
+      nil -> invalid_message_id()
       message_id ->
         case NntpService.get_article(message_id) do
           nil -> {{:recv_article, :take}, {335, "SEND YOUR ARTICLE OVER, OVER"}}
@@ -262,6 +266,37 @@ defmodule Athel.Nntp.SessionHandler do
       {:ok, _} -> {:reply, {235, "Article transferred"}, state}
       #TODO: cleaner error message
       {:error, changeset} -> {:reply, {436, inspect(changeset.errors)}, state}
+    end
+  end
+
+  command "CHECK", :check_article, max_args: 1, auth: [require: true]
+  def check_article([id], _) do
+    case extract_message_id(id) do
+      nil -> invalid_message_id()
+      message_id ->
+        case NntpService.get_article(message_id) do
+          nil -> {:continue, {238, "<#{message_id}>"}}
+          _article -> {:continue, {438, "<#{message_id}>"}}
+        end
+    end
+  end
+
+  command "TAKETHIS", :take_streamed_article, max_args: 1, auth: [require: true]
+  def take_streamed_article([id], _) do
+    case extract_message_id(id) do
+      nil -> invalid_message_id()
+      message_id ->
+        case NntpService.get_article(message_id) do
+          nil -> {{:recv_article, :take_streamed}, nil}
+          _article -> {:kill_article, {439, "<#{message_id}>"}}
+        end
+    end
+  end
+
+  def handle_call({:take_streamed_article, headers, body}, _sender, state) do
+    case NntpService.take_article(headers, body) do
+      {:ok, article} -> {:reply, {239, "<#{article.message_id}>"}, state}
+      {:error, changeset} -> {:reply, {439, "<#{changeset.changes[:message_id]}>"}, state}
     end
   end
 
@@ -345,6 +380,10 @@ defmodule Athel.Nntp.SessionHandler do
       [_, id] -> id
       _ -> nil
     end
+  end
+
+  defp invalid_message_id do
+    {:error, {501, "Invalid message-ID"}}
   end
 
   defp no_group_selected do

@@ -63,7 +63,9 @@ defmodule Athel.Nntp.ServerTest do
       "POST" => 0,
       "IHAVE" => 1,
       "NEWGROUPS" => 2,
-      "NEWNEWS" => 3
+      "NEWNEWS" => 3,
+      "CHECK" => 1,
+      "TAKETHIS" => 1
     }
 
     for {command, argument_count} <- argument_counts do
@@ -83,7 +85,7 @@ defmodule Athel.Nntp.ServerTest do
   end
 
   test "CAPABILITIES", %{socket: socket} do
-    assert send_recv(socket, "CAPABILITIES\r\n") == "101 Listing capabilities\r\nVERSION 2\r\nREADER\r\nPOST\r\nLIST ACTIVE NEWGROUPS\r\nSTARTTLS\r\nIHAVE\r\nAUTHINFO USER\r\n.\r\n"
+    assert send_recv(socket, "CAPABILITIES\r\n") == "101 Listing capabilities\r\nVERSION 2\r\nREADER\r\nPOST\r\nLIST ACTIVE NEWGROUPS\r\nSTARTTLS\r\nIHAVE\r\nSTREAMING\r\nAUTHINFO USER\r\n.\r\n"
 
     quit(socket)
   end
@@ -366,6 +368,26 @@ defmodule Athel.Nntp.ServerTest do
     time = Timex.format!(before, "%H%M", :strftime)
     assert send_recv(socket, "NEWNEWS fun.times #{date} #{time}\r\n") == "230 HOO-WEE\r\n<00@test.com>\r\n<01@test.com>\r\n.\r\n"
     assert send_recv(socket, "NEWNEWS butts #{date} #{time}\r\n") == "230 HOO-WEE\r\n.\r\n"
+
+    quit(socket)
+  end
+
+  test "article streaming", %{socket: socket} do
+    setup_models(1)
+    article = Repo.get!(Article, "00@test.com")
+    |> Repo.preload(:groups)
+    |> Repo.preload(:attachments)
+
+    assert send_recv(socket, "MODE STREAM\r\n") =~ status(203)
+
+    assert send_recv(socket, "CHECK asd\r\n") =~ status(501)
+    assert send_recv(socket, "CHECK <00@test.com>\r\n") =~ "438 <00@test.com>\r\n"
+    assert send_recv(socket, "CHECK <01@test.com>\r\n") =~ "238 <01@test.com>\r\n"
+
+    assert send_recv(socket, "TAKETHIS <whoopsy@test.com\r\n#{Formattable.format(article)}") =~ status(501)
+    assert send_recv(socket, "TAKETHIS <00@test.com>\r\n#{Formattable.format(article)}") == "439 <00@test.com>\r\n"
+    new_article = %{article | message_id: "01@test.com"}
+    assert send_recv(socket, "TAKETHIS <01@test.com>\r\n#{Formattable.format(new_article)}") =~ "239 <01@test.com>\r\n"
 
     quit(socket)
   end
