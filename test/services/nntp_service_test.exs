@@ -98,6 +98,7 @@ defmodule Athel.NntpServiceTest do
     {:ok, posted_article} = post_article(headers, body)
 
     article = Repo.get(Article, posted_article.message_id) |> Repo.preload(:groups)
+    assert article.message_id =~ ~r/example.com$/
     assert article.from == headers["FROM"]
     assert article.subject == headers["SUBJECT"]
     assert article.content_type == headers["CONTENT-TYPE"]

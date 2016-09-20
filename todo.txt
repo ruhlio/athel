@@ -1,2 +1,4 @@
 ban/delete by post/poster
-store hashed/encrypted/plain? IP address of anonymous posters
+increment group watermarks
+merge already stored attachments
+configure logging to file

@@ -88,8 +88,12 @@ defmodule Athel.NntpService do
 
   @spec post_article(headers, list(String.t)) :: new_article_result
   def post_article(headers, body) do
+    config = Application.fetch_env!(:athel, Athel.Nntp)
+    hostname = config[:hostname]
+
+    #TODO: user logged in user's name/email for FROM
     save_article(headers, body,
-      %{message_id: generate_message_id(),
+      %{message_id: generate_message_id(hostname),
         from: headers["FROM"],
         subject: headers["SUBJECT"],
         date: Timex.now(),
@@ -207,8 +211,11 @@ defmodule Athel.NntpService do
 
   @spec new_topic(list(Group.t), changeset_params) :: new_article_result
   def new_topic(groups, params) do
+    config = Application.fetch_env!(:athel, Athel.Nntp)
+    hostname = config[:hostname]
+
     params = Map.merge(params,
-      %{message_id: generate_message_id(),
+      %{message_id: generate_message_id(hostname),
         parent: nil,
         date: Timex.now()})
 
@@ -218,10 +225,9 @@ defmodule Athel.NntpService do
     |> Repo.insert
   end
 
-  defp generate_message_id() do
-    #TODO: pull in hostname
+  defp generate_message_id(hostname) do
     id = UUID.generate() |> String.replace("-", ".")
-    "#{id}@localhost"
+    "#{id}@#{hostname}"
   end
 
 end

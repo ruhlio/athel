@@ -44,6 +44,7 @@ config :athel, Athel.Repo,
 
 config :athel, Athel.Nntp,
   port: 8119,
+  hostname: "localhost",
   pool_size: 10,
   timeout: 5_000,
   keyfile: Path.expand("../priv/testing.key", __DIR__),
