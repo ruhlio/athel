@@ -1,4 +1,3 @@
 ban/delete by post/poster
 increment group watermarks
-merge already stored attachments
 configure logging to file

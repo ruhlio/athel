@@ -2,7 +2,7 @@ defmodule Athel.NntpServiceTest do
   use Athel.ModelCase
 
   import Athel.NntpService
-  alias Athel.{Group, Article}
+  alias Athel.{Group, Article, Attachment}
 
   test "get groups" do
     setup_models()
@@ -192,6 +192,42 @@ defmodule Athel.NntpServiceTest do
 
     {:error, changeset} = post_article(headers, body)
     assert changeset.errors[:attachments] == {"limited to 3", []}
+  end
+
+  test "merges identical attachments" do
+    setup_models()
+
+    headers =
+      %{"SUBJECT" => "gnarly",
+        "FROM" => "Chef Mandude <surferdude88@hotmail.com>",
+        "NEWSGROUPS" => "fun.times",
+        "MIME-VERSION" => "1.0",
+        "CONTENT-TYPE" => {"multipart/mixed", %{"boundary" => "surfsup"}}}
+
+    body =
+      ["--surfsup",
+       "Content-Transfer-Encoding: base64",
+       "Content-Disposition: attachment; filename=\"turbo_killer.gif\"",
+       "",
+       "Q2FuJ3QgZ2V0IG15DQpsaW5lIGVuZGluZ3MKY29uc2lzdGVudA1pIHF1aXQ=",
+       "--surfsup",
+       "Content-Transfer-Encoding: base64",
+       "Content-Disposition: attachment; filename=\"turbo_killer.gif\"",
+       "",
+       "Q2FuJ3QgZ2V0IG15DQpsaW5lIGVuZGluZ3MKY29uc2lzdGVudA1pIHF1aXQ=",
+       "--surfsup--"]
+    body_redux =
+      ["--surfsup",
+       "Content-Transfer-Encoding: base64",
+       "Content-Disposition: attachment; filename=\"turbo_killer.gif\"",
+       "",
+       "Q2FuJ3QgZ2V0IG15DQpsaW5lIGVuZGluZ3MKY29uc2lzdGVudA1pIHF1aXQ=",
+       "--surfsup--"]
+
+    {:ok, _} = post_article(headers, body)
+    {:ok, _} = post_article(headers, body_redux)
+
+    assert 1 == Repo.one(from a in Attachment, select: count(a.id))
   end
 
   test "take" do

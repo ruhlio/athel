@@ -3,7 +3,7 @@ defmodule Athel.NntpService do
 
   import Ecto.Query
   alias Ecto.{Changeset, UUID}
-  alias Athel.{Repo, Group, Article, Multipart}
+  alias Athel.{Repo, Group, Article, Attachment, Multipart}
 
   @type changeset_params :: %{optional(binary) => term} | %{optional(atom) => term}
   @type headers :: %{optional(String.t) => String.t}
@@ -118,7 +118,6 @@ defmodule Athel.NntpService do
       |> set_groups(headers)
       |> set_parent(headers)
       |> set_attachments(attachments)
-      |> Changeset.put_assoc(:attachments, attachments)
 
       Repo.insert(changeset)
     end
@@ -163,6 +162,22 @@ defmodule Athel.NntpService do
       Changeset.add_error(changeset, :attachments,
         "limited to #{max_attachment_count}")
     else
+      # mapping attachments by hash eliminates duplicate uploads
+      hashed_attachments = attachments
+      |> Enum.reduce(%{}, fn attachment, acc ->
+        {:ok, hash} = Attachment.hash_content(attachment.content)
+        Map.put(acc, hash, attachment)
+      end)
+
+      attachments = hashed_attachments |> Enum.map(fn {hash, attachment} ->
+        existing_attachment = (from a in Attachment,
+          where: a.hash == ^hash) |> first |> Repo.one
+        if is_nil(existing_attachment) do
+          Attachment.changeset(%Attachment{}, attachment)
+        else
+          existing_attachment
+        end
+      end)
       Changeset.put_assoc(changeset, :attachments, attachments)
     end
   end

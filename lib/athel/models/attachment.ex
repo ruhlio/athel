@@ -21,18 +21,23 @@ defmodule Athel.Attachment do
     max_attachment_size = Application.fetch_env!(:athel, Athel.Nntp)[:max_attachment_size]
 
     struct
-    |> cast(params, [:content])
-    |> hash_content
+    |> cast(params, [:content, :filename])
+    |> hash_changeset
     |> determine_type
     |> validate_required([:type, :hash, :content])
     |> validate_length(:content, max: max_attachment_size)
   end
 
-  defp hash_content(changeset = %Changeset{changes: changes}) do
+  @spec hash_content(binary) :: {:ok, binary} | {:error, String.t}
+  def hash_content(content) do
+    Multihash.encode(:sha1, :crypto.hash(:sha, content))
+  end
+
+  defp hash_changeset(changeset = %Changeset{changes: changes}) do
     case changes[:content] do
       nil -> changeset
       content ->
-        {:ok, hash} = Multihash.encode(:sha1, :crypto.hash(:sha, content))
+        {:ok, hash} = hash_content(content)
         put_change(changeset, :hash, hash)
     end
   end
