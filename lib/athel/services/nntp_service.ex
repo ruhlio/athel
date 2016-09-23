@@ -137,7 +137,11 @@ defmodule Athel.NntpService do
         #TODO: move this to the base changeset? or the group changeset?
         Changeset.add_error(changeset, :groups, "doesn't allow posting")
       true ->
-        Changeset.put_assoc(changeset, :groups, groups)
+        upped_groups = groups
+        |> Enum.map(fn group ->
+          Group.changeset(group, %{high_watermark: group.high_watermark + 1})
+        end)
+        Changeset.put_assoc(changeset, :groups, upped_groups)
     end
   end
 
