@@ -404,9 +404,8 @@ defmodule Athel.Nntp.ServerTest do
     resp
   end
 
-  defp upgrade_to_ssl(socket) do
-    config = Application.fetch_env!(:athel, Athel.Nntp)
-    opts = [keyfile: config[:keyfile]]
+  defp upgrade_to_ssl(socket, cacertfile \\ nil) do
+    opts = if is_nil(cacertfile), do: [], else: [cacertfile: cacertfile]
     {:ok, socket} = :ssl.connect(socket, opts)
     socket
   end
