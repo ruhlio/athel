@@ -121,10 +121,11 @@ defmodule Athel.Nntp.Protocol do
     opts = [keyfile: state.opts[:keyfile],
             certfile: state.opts[:certfile],
             cacertfile: state.opts[:cacertfile],
-            verify: :verify_peer]
+            verify: :verify_none]
     result =
       with :ok <- :ssl.ssl_accept(state.socket, opts, state.opts[:timeout]),
-           {:ok, socket} <- :ssl.transport_accept(state.socket, state.opts[:timeout]),
+           {:ok, socket} <- :ssl.transport_accept(
+             state.socket, state.opts[:timeout]),
       do: {:ok, socket}
 
     case result do
