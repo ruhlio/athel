@@ -12,6 +12,8 @@ defmodule Athel.Nntp.Defs do
 
     auth_clause = quote do
       !is_authenticated(state) ->
+        Logger.info(
+          "Access denied for #{get_username(state)}@#{unquote(name)}")
         {:reply, {:continue, unquote(unauthorized_response)}, state}
     end
 
@@ -51,5 +53,10 @@ defmodule Athel.Nntp.Defs do
 
   def is_authenticated(%{authentication: %Athel.User{}}), do: true
   def is_authenticated(_), do: false
+
+  def get_username(%{authentication: %Athel.User{username: username}}) do
+    "user #{username}"
+  end
+  def get_username(_), do: "unauthorized client"
 
 end

@@ -241,9 +241,13 @@ defmodule Athel.Nntp.SessionHandler do
 
   def handle_call({:post_article, headers, body}, _sender, state) do
     case NntpService.post_article(headers, body) do
-      {:ok, _} -> {:reply, {240, "Your input is appreciated"}, state}
+      {:ok, article} ->
+        Logger.debug("Article <#{article.message_id}> posted from #{get_username(state)}")
+        {:reply, {240, "Your input is appreciated"}, state}
       #TODO: cleaner error message
-      {:error, changeset} -> {:reply, {441, inspect(changeset.errors)}, state}
+      {:error, changeset} ->
+        Logger.debug("Invalid article <#{changeset.changes[:message_id]}> posted from #{get_username(state)}")
+        {:reply, {441, inspect(changeset.errors)}, state}
     end
   end
 
@@ -263,9 +267,13 @@ defmodule Athel.Nntp.SessionHandler do
 
   def handle_call({:take_article, headers, body}, _sender, state) do
     case NntpService.take_article(headers, body) do
-      {:ok, _} -> {:reply, {235, "Article transferred"}, state}
+      {:ok, article} ->
+        Logger.debug("Article <#{article.message_id}> taken from #{get_username(state)}")
+        {:reply, {235, "Article transferred"}, state}
       #TODO: cleaner error message
-      {:error, changeset} -> {:reply, {436, inspect(changeset.errors)}, state}
+      {:error, changeset} ->
+        Logger.warn("Invalid article <#{changeset.changes[:message_id]}> rejected from #{get_username(state)}")
+        {:reply, {436, inspect(changeset.errors)}, state}
     end
   end
 
@@ -295,8 +303,12 @@ defmodule Athel.Nntp.SessionHandler do
 
   def handle_call({:take_streamed_article, headers, body}, _sender, state) do
     case NntpService.take_article(headers, body) do
-      {:ok, article} -> {:reply, {239, "<#{article.message_id}>"}, state}
-      {:error, changeset} -> {:reply, {439, "<#{changeset.changes[:message_id]}>"}, state}
+      {:ok, article} ->
+        Logger.debug("Streamed article <#{article.message_id}> taken from #{get_username(state)}")
+        {:reply, {239, "<#{article.message_id}>"}, state}
+      {:error, changeset} ->
+        Logger.warn("Invalid article <#{changeset.changes[:message_id]}> rejected from #{get_username(state)}")
+        {:reply, {439, "<#{changeset.changes[:message_id]}>"}, state}
     end
   end
 
