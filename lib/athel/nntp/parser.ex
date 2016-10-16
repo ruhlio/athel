@@ -167,7 +167,7 @@ defmodule Athel.Nntp.Parser do
     header_value(rest, [acc, char])
   end
 
-  defp header_params(rest = <<"\r\n", _ :: binary>>, params) do
+  defp header_params(<<"\r\n", rest :: binary>>, params) do
     {params, rest}
   end
 
@@ -203,7 +203,7 @@ defmodule Athel.Nntp.Parser do
     need_more()
   end
 
-  defp header_param_value(<<"\r\n", rest :: binary>>, {acc, _}) do
+  defp header_param_value(rest = <<"\r\n", _ :: binary>>, {acc, _}) do
     {acc |> IO.iodata_to_binary, rest}
   end
 
@@ -215,9 +215,10 @@ defmodule Athel.Nntp.Parser do
   defp header_param_value(<<"\"", rest :: binary>>, {acc, delimited}) do
     cond do
       delimited ->
-        case Regex.run ~r/^\s*(;?(.*?\r\n))/m, rest do
+        case Regex.run ~r/^( |\t)*(;?(.*))/s, rest do
           nil -> syntax_error(:header_param_value)
-          [_, _, rest] -> {acc |> IO.iodata_to_binary, rest}
+          [_, _, _, rest2] ->
+            {acc |> IO.iodata_to_binary, rest2}
         end
       IO.iodata_to_binary(acc) =~ ~r/^\s*$/ ->
         header_param_value(rest, {[], true})

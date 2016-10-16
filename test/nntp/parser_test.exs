@@ -75,6 +75,19 @@ defmodule Athel.Nntp.ParserTest do
                       ""}
   end
 
+  test "header with params followed other headers" do
+    result = parse_headers(
+      ["Content-Type: text/plain; charset=utf-8\r\n",
+       "Subject: None\r\n",
+       "Kind: of\r\n",
+       "\r\n"])
+    assert result == {:ok,
+                      %{"CONTENT-TYPE" => {"text/plain", %{"charset" => "utf-8"}},
+                        "SUBJECT" => "None",
+                        "KIND" => "of"},
+                      ""}
+  end
+
   test "header value with delimited parameter" do
     result = parse_headers(
       ["Content-Type: attachment; boundary= \"hearsay\" ; unnecessary=\t\"unfortunately\"   \r\n",

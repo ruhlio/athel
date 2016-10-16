@@ -379,6 +379,7 @@ defmodule Athel.Nntp.SessionHandler do
       username ->
         case AuthService.login(username, password) do
           {:ok, user} ->
+            Logger.info("User #{username} logged in")
             {:continue, {281, "Authentication successful"}, %{authentication: user}}
           :invalid_credentials ->
             {:continue, {481, "No bueno"}, %{authentication: nil}}
