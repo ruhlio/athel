@@ -91,8 +91,12 @@ defmodule Athel.Nntp.Protocol do
 
     {response, buffer} =
       case message do
-        {:error, type} -> {{501, "Syntax error in #{type}"}, []}
-        {message, buffer} -> {GenServer.call(state.session_handler, message), buffer}
+        {:error, type} ->
+          message = "Syntax error in #{type}"
+          Logger.debug message
+          {{501, message}, []}
+        {message, buffer} ->
+          {GenServer.call(state.session_handler, message), buffer}
       end
 
     send_status(state, response)

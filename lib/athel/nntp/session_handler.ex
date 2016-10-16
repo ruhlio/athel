@@ -283,8 +283,12 @@ defmodule Athel.Nntp.SessionHandler do
       nil -> invalid_message_id()
       message_id ->
         case NntpService.get_article(message_id) do
-          nil -> {:continue, {238, "<#{message_id}>"}}
-          _article -> {:continue, {438, "<#{message_id}>"}}
+          nil ->
+            Logger.debug "Successful CHECK for <#{message_id}>"
+            {:continue, {238, "<#{message_id}>"}}
+          _article ->
+            Logger.debug "Denied CHECK for <#{message_id}>"
+            {:continue, {438, "<#{message_id}>"}}
         end
     end
   end
@@ -295,8 +299,12 @@ defmodule Athel.Nntp.SessionHandler do
       nil -> invalid_message_id()
       message_id ->
         case NntpService.get_article(message_id) do
-          nil -> {{:recv_article, :take_streamed}, nil}
-          _article -> {:kill_article, {439, "<#{message_id}>"}}
+          nil ->
+            Logger.debug "Taking article <#{message_id}>"
+            {{:recv_article, :take_streamed}, nil}
+          _article ->
+            Logger.debug "Denying taking of article <#{message_id}>"
+            {:kill_article, {439, "<#{message_id}>"}}
         end
     end
   end
@@ -379,7 +387,9 @@ defmodule Athel.Nntp.SessionHandler do
   end
 
   def handle_call({other_command, _}, _sender, state) do
-    {:reply, {:continue, {501, "Unknown command #{other_command}"}}, state}
+    message = "Unknown command #{other_command}"
+    Logger.debug message
+    {:reply, {:continue, {501, message}}, state}
   end
 
   defp format_group(group) do
