@@ -246,7 +246,7 @@ defmodule Athel.Nntp.SessionHandler do
         {:reply, {240, "Your input is appreciated"}, state}
       #TODO: cleaner error message
       {:error, changeset} ->
-        Logger.debug("Invalid article <#{changeset.changes[:message_id]}> posted from #{get_username(state)}")
+        Logger.debug("Invalid article <#{changeset.changes[:message_id]}> posted from #{get_username(state)} (#{inspect(changeset.errors)})")
         {:reply, {441, inspect(changeset.errors)}, state}
     end
   end
@@ -272,7 +272,7 @@ defmodule Athel.Nntp.SessionHandler do
         {:reply, {235, "Article transferred"}, state}
       #TODO: cleaner error message
       {:error, changeset} ->
-        Logger.warn("Invalid article <#{changeset.changes[:message_id]}> rejected from #{get_username(state)}")
+        Logger.warn("Invalid article <#{changeset.changes[:message_id]}> rejected from #{get_username(state)} (#{inspect(changeset.errors)})")
         {:reply, {436, inspect(changeset.errors)}, state}
     end
   end
@@ -315,7 +315,7 @@ defmodule Athel.Nntp.SessionHandler do
         Logger.debug("Streamed article <#{article.message_id}> taken from #{get_username(state)}")
         {:reply, {239, "<#{article.message_id}>"}, state}
       {:error, changeset} ->
-        Logger.warn("Invalid article <#{changeset.changes[:message_id]}> rejected from #{get_username(state)}")
+        Logger.warn("Invalid streamed article <#{changeset.changes[:message_id]}> rejected from #{get_username(state)} (#{inspect(changeset.errors)})")
         {:reply, {439, "<#{changeset.changes[:message_id]}>"}, state}
     end
   end
