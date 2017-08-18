@@ -9,7 +9,7 @@ defmodule Athel.Repo.Migrations.CreateArticle do
       add :parent_message_id, references(:articles, column: :message_id, type: :string), size: 192
       add :from, :string, null: true
       add :subject, :string, null: false
-      add :date, :datetime, null: false
+      add :date, :utc_datetime, null: false
       add :content_type, :string, null: false
       add :body, {:array, :string}, null: false
 

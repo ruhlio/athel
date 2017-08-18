@@ -1,5 +1,7 @@
 defmodule Athel.Group do
-  use Athel.Web, :model
+  use Ecto.Schema
+
+  import Ecto.Changeset
 
   schema "groups" do
     field :name, :string

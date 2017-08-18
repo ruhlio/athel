@@ -1,12 +1,12 @@
-defmodule Athel.Web do
+defmodule AthelWeb do
   @moduledoc """
   A module that keeps using definitions for controllers,
   views and so on.
 
   This can be used in your application as:
 
-      use Athel.Web, :controller
-      use Athel.Web, :view
+      use AthelWeb, :controller
+      use AthelWeb, :view
 
   The definitions below will be executed for every view,
   controller, etc, so keep them short and clean, focused
@@ -16,33 +16,22 @@ defmodule Athel.Web do
   below.
   """
 
-  def model do
-    quote do
-      use Ecto.Schema
-      use Timex.Ecto.Timestamps
-
-      import Ecto
-      import Ecto.Changeset
-      import Ecto.Query
-    end
-  end
-
   def controller do
     quote do
-      use Phoenix.Controller
+      use Phoenix.Controller, namespace: AthelWeb
 
       alias Athel.Repo
       import Ecto
       import Ecto.Query
 
-      import Athel.Router.Helpers
-      import Athel.Gettext
+      import AthelWeb.Router.Helpers
+      import AthelWeb.Gettext
     end
   end
 
   def view do
     quote do
-      use Phoenix.View, root: "web/templates"
+      use Phoenix.View, root: "lib/athel_web/templates", namespace: AthelWeb
 
       # Import convenience functions from controllers
       import Phoenix.Controller, only: [get_csrf_token: 0, get_flash: 2, view_module: 1]
@@ -50,11 +39,11 @@ defmodule Athel.Web do
       # Use all HTML functionality (forms, tags, etc)
       use Phoenix.HTML
 
-      import Athel.Router.Helpers
-      import Athel.ErrorHelpers
-      import Athel.Gettext
+      import AthelWeb.Router.Helpers
+      import AthelWeb.ErrorHelpers
+      import AthelWeb.Gettext
 
-      import Athel.ViewCommon
+      import AthelWeb.ViewCommon
     end
   end
 
@@ -71,7 +60,7 @@ defmodule Athel.Web do
       alias Athel.Repo
       import Ecto
       import Ecto.Query
-      import Athel.Gettext
+      import AthelWeb.Gettext
     end
   end
 

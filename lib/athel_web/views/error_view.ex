@@ -1,5 +1,5 @@
-defmodule Athel.ErrorView do
-  use Athel.Web, :view
+defmodule AthelWeb.ErrorView do
+  use AthelWeb, :view
 
   def render("404.html", _assigns) do
     "Page not found"

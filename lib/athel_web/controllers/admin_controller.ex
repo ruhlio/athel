@@ -1,5 +1,5 @@
-defmodule Athel.AdminController do
-  use Athel.Web, :controller
+defmodule AthelWeb.AdminController do
+  use AthelWeb, :controller
 
   alias Athel.Group
 

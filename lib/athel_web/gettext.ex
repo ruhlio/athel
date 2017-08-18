@@ -1,4 +1,4 @@
-defmodule Athel.Gettext do
+defmodule AthelWeb.Gettext do
   @moduledoc """
   A module providing Internationalization with a gettext-based API.
 

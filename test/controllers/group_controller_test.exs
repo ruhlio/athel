@@ -1,5 +1,5 @@
-defmodule Athel.GroupControllerTest do
-  use Athel.ConnCase
+defmodule AthelWeb.GroupControllerTest do
+  use AthelWeb.ConnCase
   alias Athel.Group
   alias Athel.Repo
 

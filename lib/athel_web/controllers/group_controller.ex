@@ -1,5 +1,5 @@
-defmodule Athel.GroupController do
-  use Athel.Web, :controller
+defmodule AthelWeb.GroupController do
+  use AthelWeb, :controller
 
   alias Athel.{NntpService, Group, Article}
 

@@ -1,7 +1,7 @@
-defmodule Athel.Endpoint do
+defmodule AthelWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :athel
 
-  socket "/socket", Athel.UserSocket
+  socket "/socket", AthelWeb.UserSocket
 
   # Serve at "/" the static files from "priv/static" directory.
   #
@@ -38,5 +38,5 @@ defmodule Athel.Endpoint do
     key: "_athel_key",
     signing_salt: "6J7dmZrf"
 
-  plug Athel.Router
+  plug AthelWeb.Router
 end

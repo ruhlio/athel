@@ -1,4 +1,4 @@
-defmodule Athel.ErrorHelpers do
+defmodule AthelWeb.ErrorHelpers do
   @moduledoc """
   Conveniences for translating and building error messages.
   """

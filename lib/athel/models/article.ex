@@ -1,6 +1,7 @@
 defmodule Athel.Article do
-  use Athel.Web, :model
+  use Ecto.Schema
 
+  import Ecto.Changeset
   alias Athel.{Group, Attachment}
 
   @primary_key {:message_id, :string, autogenerate: false}

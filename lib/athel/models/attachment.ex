@@ -1,6 +1,7 @@
 defmodule Athel.Attachment do
-  use Athel.Web, :model
+  use Ecto.Schema
 
+  import Ecto.Changeset
   alias Ecto.Changeset
   alias Athel.Article
 

@@ -1,4 +1,4 @@
-defmodule Athel.ViewCommon do
+defmodule AthelWeb.ViewCommon do
   use Timex
 
   def format_date(date) do

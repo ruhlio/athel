@@ -201,7 +201,7 @@ defmodule Athel.Nntp.SessionHandler do
           nil ->
             no_group_selected()
           group_name ->
-            {index, _} = if is_number(id), do: {id, ()}, else: Integer.parse(id)
+            {index, _} = if is_number(id), do: {id, nil}, else: Integer.parse(id)
             group = Repo.get_by(Group, name: group_name)
             article = NntpService.get_article_by_index(group, index)
 
@@ -242,11 +242,11 @@ defmodule Athel.Nntp.SessionHandler do
   def handle_call({:post_article, headers, body}, _sender, state) do
     case NntpService.post_article(headers, body) do
       {:ok, article} ->
-        Logger.debug("Article <#{article.message_id}> posted from #{get_username(state)}")
+        Logger.debug fn -> "Article <#{article.message_id}> posted from #{get_username(state)}" end
         {:reply, {240, "Your input is appreciated"}, state}
       #TODO: cleaner error message
       {:error, changeset} ->
-        Logger.debug("Invalid article <#{changeset.changes[:message_id]}> posted from #{get_username(state)} (#{inspect(changeset.errors)})")
+        Logger.debug fn -> "Invalid article <#{changeset.changes[:message_id]}> posted from #{get_username(state)} (#{inspect(changeset.errors)})" end
         {:reply, {441, inspect(changeset.errors)}, state}
     end
   end
@@ -268,7 +268,7 @@ defmodule Athel.Nntp.SessionHandler do
   def handle_call({:take_article, headers, body}, _sender, state) do
     case NntpService.take_article(headers, body) do
       {:ok, article} ->
-        Logger.debug("Article <#{article.message_id}> taken from #{get_username(state)}")
+        Logger.debug fn -> "Article <#{article.message_id}> taken from #{get_username(state)}" end
         {:reply, {235, "Article transferred"}, state}
       #TODO: cleaner error message
       {:error, changeset} ->
@@ -284,10 +284,10 @@ defmodule Athel.Nntp.SessionHandler do
       message_id ->
         case NntpService.get_article(message_id) do
           nil ->
-            Logger.debug "Successful CHECK for <#{message_id}>"
+            Logger.debug fn -> "Successful CHECK for <#{message_id}>" end
             {:continue, {238, "<#{message_id}>"}}
           _article ->
-            Logger.debug "Denied CHECK for <#{message_id}>"
+            Logger.debug fn -> "Denied CHECK for <#{message_id}>" end
             {:continue, {438, "<#{message_id}>"}}
         end
     end
@@ -300,10 +300,10 @@ defmodule Athel.Nntp.SessionHandler do
       message_id ->
         case NntpService.get_article(message_id) do
           nil ->
-            Logger.debug "Taking article <#{message_id}>"
+            Logger.debug fn -> "Taking article <#{message_id}>" end
             {{:recv_article, :take_streamed}, nil}
           _article ->
-            Logger.debug "Denying taking of article <#{message_id}>"
+            Logger.debug fn -> "Denying taking of article <#{message_id}>" end
             {:kill_article, {439, "<#{message_id}>"}}
         end
     end
@@ -312,7 +312,7 @@ defmodule Athel.Nntp.SessionHandler do
   def handle_call({:take_streamed_article, headers, body}, _sender, state) do
     case NntpService.take_article(headers, body) do
       {:ok, article} ->
-        Logger.debug("Streamed article <#{article.message_id}> taken from #{get_username(state)}")
+        Logger.debug fn -> "Streamed article <#{article.message_id}> taken from #{get_username(state)}" end
         {:reply, {239, "<#{article.message_id}>"}, state}
       {:error, changeset} ->
         Logger.warn("Invalid streamed article <#{changeset.changes[:message_id]}> rejected from #{get_username(state)} (#{inspect(changeset.errors)})")
@@ -329,7 +329,9 @@ defmodule Athel.Nntp.SessionHandler do
   command "NEWGROUPS", :get_new_groups, max_args: 2
   def get_new_groups([date, time], _) do
     parse_datetime(date, time, fn date ->
-      groups = NntpService.get_groups_created_after(date) |> Enum.map(&format_group/1)
+      groups = date
+      |> NntpService.get_groups_created_after()
+      |> Enum.map(&format_group/1)
       {:continue, {231, "HERE WE GO", groups}}
     end)
   end
@@ -338,7 +340,8 @@ defmodule Athel.Nntp.SessionHandler do
   #TODO: implement wildmat
   def get_new_articles([group_name, date, time], _) do
     parse_datetime(date, time, fn date ->
-      message_ids = NntpService.get_articles_created_after(group_name, date)
+      message_ids = group_name
+      |> NntpService.get_articles_created_after(date)
       |> Enum.map(&("<#{&1.message_id}>"))
       {:continue, {230, "HOO-WEE", message_ids}}
     end)

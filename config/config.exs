@@ -10,10 +10,10 @@ config :athel,
   ecto_repos: [Athel.Repo]
 
 # Configures the endpoint
-config :athel, Athel.Endpoint,
+config :athel, AthelWeb.Endpoint,
   url: [host: "localhost"],
   secret_key_base: "Kq4pSxruZ4nUA7dTY8Ydsl9u8zvzqqnDCi18oMMWQfArkNW4jWfUFX0Mu6UmW4DX",
-  render_errors: [view: Athel.ErrorView, accepts: ~w(html json)],
+  render_errors: [view: AthelWeb.ErrorView, accepts: ~w(html json)],
   pubsub: [name: Athel.PubSub,
            adapter: Phoenix.PubSub.PG2]
 

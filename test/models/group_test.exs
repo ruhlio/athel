@@ -21,7 +21,7 @@ defmodule Athel.GroupTest do
     assert changeset.valid?
 
     changeset = Group.changeset(%Group{}, %{@valid_attrs | name: "MR. BRIGGS"})
-    assert changeset.errors[:name] == {"has invalid format", []}
+    assert changeset.errors[:name] == {"has invalid format", [validation: :format]}
   end
 
   test "name uniqueness" do

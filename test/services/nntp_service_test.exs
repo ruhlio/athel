@@ -103,7 +103,7 @@ defmodule Athel.NntpServiceTest do
     assert article.subject == headers["SUBJECT"]
     assert article.content_type == headers["CONTENT-TYPE"]
     assert article.body == body
-    assert article.groups == [%{group | high_watermark: 1}]
+    assert (article.groups |> Enum.map(&(&1.name))) == [group.name]
   end
 
   test "post with attachments" do

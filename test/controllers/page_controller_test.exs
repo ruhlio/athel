@@ -1,5 +1,5 @@
-defmodule Athel.PageControllerTest do
-  use Athel.ConnCase, async: true
+defmodule AthelWeb.PageControllerTest do
+  use AthelWeb.ConnCase, async: true
 
   test "GET /", %{conn: conn} do
     conn = get conn, "/"

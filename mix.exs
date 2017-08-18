@@ -4,7 +4,7 @@ defmodule Athel.Mixfile do
   def project do
     [app: :athel,
      version: "0.1.0",
-     elixir: "~> 1.3",
+     elixir: "~> 1.5",
      elixirc_paths: elixirc_paths(Mix.env),
      compilers: [:phoenix, :gettext] ++ Mix.compilers,
      build_embedded: Mix.env == :prod,
@@ -17,45 +17,31 @@ defmodule Athel.Mixfile do
   #
   # Type `mix help compile.app` for more information.
   def application do
-    [mod: {Athel, []},
-     applications: [:phoenix,
-                    :phoenix_pubsub,
-                    :phoenix_html,
-                    :phoenix_ecto,
-                    :cowboy,
-                    :logger,
-                    :gettext,
-                    :postgrex,
-                    :timex,
-                    #
-                    :emagic,
-                    :ex_multihash,
-                    :timex_ecto,
-                    :monad]]
+    [mod: {Athel.Application, []},
+     extra_applications: [:logger, :runtime_tools]]
   end
 
   # Specifies which paths to compile per environment.
-  defp elixirc_paths(:test), do: ["lib", "web", "test/support"]
-  defp elixirc_paths(_),     do: ["lib", "web"]
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_),     do: ["lib"]
 
   defp deps do
     [
       # added by phoenix
-      {:phoenix, "~> 1.2.0"},
+      {:phoenix, "~> 1.3.0"},
       {:phoenix_pubsub, "~> 1.0"},
-      {:phoenix_ecto, "~> 3.0"},
+      {:phoenix_ecto, "~> 3.2"},
       {:postgrex, ">= 0.0.0"},
-      {:phoenix_html, "~> 2.6"},
+      {:phoenix_html, "~> 2.10"},
       {:phoenix_live_reload, "~> 1.0", only: :dev},
       {:gettext, "~> 0.11"},
       {:cowboy, "~> 1.0"},
       # added by hand
-      {:timex, "~> 3.0"},
-      {:timex_ecto, "~> 3.0"},
+      {:timex, "~> 3.1"},
+      {:timex_ecto, "~> 3.1"},
       {:ex_multihash, "~> 1.0"},
       {:emagic, github: "JasonZhu/erlang_magic"},
-      {:distillery, "~> 0.9"},
-      {:credo, "~> 0.4", only: [:dev, :test]}
+      {:credo, "~> 0.8", only: [:dev, :test], runtime: false}
     ]
   end
 

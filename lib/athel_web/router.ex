@@ -1,5 +1,5 @@
-defmodule Athel.Router do
-  use Athel.Web, :router
+defmodule AthelWeb.Router do
+  use AthelWeb, :router
 
   pipeline :browser do
     plug :accepts, ["html"]
@@ -13,7 +13,7 @@ defmodule Athel.Router do
     plug :accepts, ["json"]
   end
 
-  scope "/", Athel do
+  scope "/", AthelWeb do
     pipe_through :browser
 
     get "/", PageController, :index

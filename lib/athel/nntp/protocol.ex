@@ -53,7 +53,7 @@ defmodule Athel.Nntp.Protocol do
       end
     state = %{state | buffer: buffer}
 
-    Logger.debug "Next NNTP protocol action is #{inspect action}"
+    Logger.debug fn -> "Next NNTP protocol action is #{inspect action}" end
 
     case action do
       {:continue, response} ->
@@ -112,7 +112,7 @@ defmodule Athel.Nntp.Protocol do
 
     buffer =
       case buffer do
-        {:error, } -> []
+        {:error, _} -> []
         buffer -> buffer
       end
 
@@ -178,7 +178,7 @@ defmodule Athel.Nntp.Protocol do
 
   defp send_status(%State{transport: transport, socket: socket}, {code, message}) do
     case transport.send(socket, "#{code} #{message}\r\n") do
-      :ok -> ()
+      :ok -> nil
       {:error, reason} ->
         raise CommunicationError, message: "Failed to send status to client: #{reason}"
     end
@@ -187,7 +187,7 @@ defmodule Athel.Nntp.Protocol do
   defp send_status(%State{transport: transport, socket: socket}, {code, message, body}) do
     body = body |> Formattable.format
     case transport.send(socket, "#{code} #{message}\r\n#{body}") do
-      :ok -> ()
+      :ok -> nil
       {:error, reason} ->
         raise CommunicationError, message: "Failed to send status with body to client: #{reason}"
     end
@@ -195,7 +195,7 @@ defmodule Athel.Nntp.Protocol do
 
   defp close(state) do
     case state.transport.close(state.socket) do
-      :ok -> ()
+      :ok -> nil
       {:error, reason} -> Logger.error "Failed to close connection: #{inspect reason}"
     end
   end

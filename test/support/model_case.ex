@@ -75,8 +75,9 @@ defmodule Athel.ModelCase do
     if article_count > 0 do
       for index <- 0..(article_count - 1) do
         changeset =
-          Athel.Article.changeset(%Athel.Article{},
-            %{message_id: "0#{index}@test.com",
+          %Athel.Article{}
+          |> Athel.Article.changeset(%{
+              message_id: "0#{index}@test.com",
               from: "Me",
               subject: "Talking to myself",
               date: Timex.now(),
@@ -85,7 +86,7 @@ defmodule Athel.ModelCase do
               body: ["LET'S ROCK OUT FOR JESUS & AMERICA"],
               status: "active"})
               |> Changeset.put_assoc(:groups, [group])
-        Athel.Repo.insert!(changeset) |> Repo.preload(:attachments)
+        changeset |> Athel.Repo.insert!() |> Repo.preload(:attachments)
       end
     end
 

@@ -1,5 +1,5 @@
-defmodule Athel.ArticleController do
-  use Athel.Web, :controller
+defmodule AthelWeb.ArticleController do
+  use AthelWeb, :controller
   use Timex
 
   alias Athel.Article

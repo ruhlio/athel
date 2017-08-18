@@ -1,3 +1,3 @@
-defmodule Athel.PageViewTest do
-  use Athel.ConnCase, async: true
+defmodule AthelWeb.PageViewTest do
+  use AthelWeb.ConnCase, async: true
 end

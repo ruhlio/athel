@@ -1,5 +1,7 @@
 defmodule Athel.User do
-  use Athel.Web, :model
+  use Ecto.Schema
+
+  import Ecto.Changeset
 
   schema "users" do
     field :username, :string

@@ -1,4 +1,4 @@
-defmodule Athel.UserSocket do
+defmodule AthelWeb.UserSocket do
   use Phoenix.Socket
 
   ## Channels

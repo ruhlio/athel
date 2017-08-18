@@ -1,4 +1,4 @@
-defmodule Athel.ConnCase do
+defmodule AthelWeb.ConnCase do
   @moduledoc """
   This module defines the test case to be used by
   tests that require setting up a connection.
@@ -25,10 +25,10 @@ defmodule Athel.ConnCase do
       import Ecto.Changeset
       import Ecto.Query
 
-      import Athel.Router.Helpers
+      import AthelWeb.Router.Helpers
 
       # The default endpoint for testing
-      @endpoint Athel.Endpoint
+      @endpoint AthelWeb.Endpoint
     end
   end
 

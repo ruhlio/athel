@@ -110,7 +110,7 @@ defmodule Athel.Nntp.ServerTest do
     list_active = send_recv(socket, "LIST ACTIVE\r\n")
     assert list == list_active
     assert list == "215 Listing groups\r\naardvarks.are.delicious 3 1 y\r\ncartoons.chinese 10 5 m\r\n.\r\n"
-    assert send_recv(socket, "LIST NEWSGROUPS\r\n")== "215 Listing group descriptions\r\naardvarks.are.delicious Aardvark enthusiasts welcome\r\ncartoons.chinese Glorious Chinese animation\r\n.\r\n"
+    assert send_recv(socket, "LIST NEWSGROUPS\r\n") == "215 Listing group descriptions\r\naardvarks.are.delicious Aardvark enthusiasts welcome\r\ncartoons.chinese Glorious Chinese animation\r\n.\r\n"
     assert send_recv(socket, "LIST ACTIVE *.drugs\r\n") == "501 Invalid LIST arguments\r\n"
 
     quit(socket)
