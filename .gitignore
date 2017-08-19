@@ -29,3 +29,7 @@ erl_crash.dump
 # distillery
 rel/*
 !rel/config.exs
+
+# Intellij
+.idea/
+*.iml

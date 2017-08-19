@@ -1,5 +1,0 @@
-* Athel
-An NNTP backed messageboard
-
-* Running
-See [[file:INSTALL.org::*Running][Running]]
