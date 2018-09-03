@@ -13,10 +13,10 @@ exports.config = {
   // Phoenix paths configuration
   paths: {
     // Dependencies and current project directories to watch
-      watched: ["static", "css", "js"],
+      watched: ["static", "styles"],
 
     // Where to compile files to
-    public: "priv/static"
+    public: "../priv/static"
   },
 
   // Configure your plugins
@@ -25,7 +25,8 @@ exports.config = {
             processors: [
                 require('autoprefixer')(['last 4 versions'])
             ]
-        }
+        },
+        less: {}
   },
 
   modules: {

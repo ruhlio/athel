@@ -128,6 +128,7 @@ defmodule Athel.NntpService do
     |> Map.get("NEWSGROUPS", "")
     |> String.split(",")
     |> Enum.map(&String.trim/1)
+
     groups = Repo.all(from g in Group, where: g.name in ^group_names)
 
     cond do

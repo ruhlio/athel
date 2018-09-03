@@ -1,5 +1,8 @@
 @import "_normalize";
 
+@primary-color: #444;
+@error-color: rgb(202, 60, 60);
+
 .flash {
     color: #fff;
     padding: 0.25em;
@@ -18,7 +21,7 @@
 }
 
 .flash-error {
-    background-color: rgb(202, 60, 60);
+    background-color: @error-color;
 }
 
 input {
@@ -27,7 +30,7 @@ input {
 }
 
 .input-error {
-    border: 2px solid rgb(202, 60, 60);
+    border: 2px solid @error-color;
 }
 
 .input-field label {
@@ -55,34 +58,45 @@ a:hover {
 
 body {
     padding: 0 1em;
+    display: flex;
+    flex-flow: row;
 }
 
 header {
-    display: flex;
-    flex-flow: row nowrap;
-    //justify-content: space-between;
-    align-items: baseline;
+    flex: 1 auto;
 
-    .title {
-        font-size: 1.2em;
+    .navigation {
+        list-style: none;
+        display: flex;
+        align-items: stretch;
+        flex-direction: column;
     }
 
-    header ul {
-    }
-
-    li {
+    .navigation li {
         display: inline;
         list-style-type: none;
-        font-size: 0.8em;
-        margin-right: 1em;
+        font-size: 1.2em;
+        border-right: 1px dashed @primary-color;
+        margin-bottom: 0.5em;
 
-        &::before {
-            content: "[";
+        &:hover {
+            border-right: 1px dashed lighten(@primary-color, 30%);
         }
-        &::after {
-            content: "]";
+
+        a {
+            color: @primary-color;
+            text-decoration: none
+        }
+
+        a:hover {
+            color: #000;
         }
     }
+}
+
+main {
+    flex: 2 75%;
+    padding-left: 2em;
 }
 
 // groups

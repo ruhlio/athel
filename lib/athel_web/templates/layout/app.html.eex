@@ -13,8 +13,8 @@
 
     <body>
         <header>
-            <a class="title" href="/">Athel</a>
-            <ul>
+            <ul class="navigation">
+                <li><a href="/">Athel</a></li>
                 <li><a href="<%= group_path(@conn, :index) %>">Groups</a></li>
                 <li><a href="#">About</a></li>
             </ul>

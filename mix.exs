@@ -39,7 +39,7 @@ defmodule Athel.Mixfile do
       # added by hand
       {:timex, "~> 3.1"},
       {:timex_ecto, "~> 3.1"},
-      {:ex_multihash, "~> 1.0"},
+      {:ex_multihash, github: "ruhlio/ex_multihash"},
       {:emagic, github: "JasonZhu/erlang_magic"},
       {:credo, "~> 0.8", only: [:dev, :test], runtime: false}
     ]
