@@ -4,7 +4,7 @@ defmodule Athel.Mixfile do
   def project do
     [app: :athel,
      version: "0.1.0",
-     elixir: "~> 1.5",
+     elixir: "~> 1.7",
      elixirc_paths: elixirc_paths(Mix.env),
      compilers: [:phoenix, :gettext] ++ Mix.compilers,
      build_embedded: Mix.env == :prod,
@@ -30,18 +30,19 @@ defmodule Athel.Mixfile do
       # added by phoenix
       {:phoenix, "~> 1.3.0"},
       {:phoenix_pubsub, "~> 1.0"},
-      {:phoenix_ecto, "~> 3.2"},
+      {:phoenix_ecto, "~> 3.3.0"},
       {:postgrex, ">= 0.0.0"},
-      {:phoenix_html, "~> 2.10"},
+      {:phoenix_html, "~> 2.12.0"},
       {:phoenix_live_reload, "~> 1.0", only: :dev},
-      {:gettext, "~> 0.11"},
+      {:gettext, "~> 0.16.0"},
       {:cowboy, "~> 1.0"},
       # added by hand
-      {:timex, "~> 3.1"},
-      {:timex_ecto, "~> 3.1"},
+      {:timex, "~> 3.3"},
+      {:timex_ecto, "~> 3.3"},
+      {:cloak, "~> 0.7.0"},
       {:ex_multihash, github: "ruhlio/ex_multihash"},
       {:emagic, github: "JasonZhu/erlang_magic"},
-      {:credo, "~> 0.8", only: [:dev, :test], runtime: false}
+      {:credo, "~> 0.10", only: [:dev, :test], runtime: false}
     ]
   end
 

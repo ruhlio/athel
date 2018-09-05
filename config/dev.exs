@@ -53,3 +53,8 @@ config :athel, Athel.Nntp,
   max_request_size: 75_000_000,
   max_attachment_size: 20_000_000,
   max_attachment_count: 3
+
+config :athel, Athel.Vault,
+  ciphers: [
+    default: {Cloak.Ciphers.AES.GCM, tag: "AES.GCM.V1", key: Base.decode64!("7/TfD+toi48MB2bpPZRnsfc8pgvpY1QEQWvfYyfGsVw=")}
+  ]

@@ -114,7 +114,8 @@ defmodule Athel.NntpService do
 
   defp save_article(headers, body, params) do
     with {:ok, {body, attachments}} <- read_body(headers, body) do
-      changeset = Article.changeset(%Article{}, Map.put(params, :body, body))
+      changeset = %Article{}
+      |> Article.changeset(Map.put(params, :body, body))
       |> set_groups(headers)
       |> set_parent(headers)
       |> set_attachments(attachments)
@@ -132,7 +133,7 @@ defmodule Athel.NntpService do
     groups = Repo.all(from g in Group, where: g.name in ^group_names)
 
     cond do
-      length(groups) == 0 || length(group_names) != length(groups) ->
+      Enum.empty?(groups) || length(group_names) != length(groups) ->
         Changeset.add_error(changeset, :groups, "is invalid")
       Enum.any?(groups, &(&1.status == "n")) ->
         #TODO: move this to the base changeset? or the group changeset?

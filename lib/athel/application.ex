@@ -7,7 +7,8 @@ defmodule Athel.Application do
     children = [
       supervisor(Athel.Repo, []),
       supervisor(AthelWeb.Endpoint, []),
-      supervisor(Athel.Nntp, [])
+      supervisor(Athel.Nntp, []),
+      supervisor(Athel.Scraper, [])
     ]
 
     opts = [strategy: :one_for_one, name: Athel.Supervisor]
