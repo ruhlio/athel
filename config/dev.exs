@@ -36,8 +36,8 @@ config :phoenix, :stacktrace_depth, 20
 # Configure your database
 config :athel, Athel.Repo,
   adapter: Ecto.Adapters.Postgres,
-  username: "postgres",
-  password: "postgres",
+  username: "athel",
+  password: "athel",
   database: "athel_dev",
   hostname: "localhost",
   pool_size: 10

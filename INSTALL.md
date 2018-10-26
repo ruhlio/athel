@@ -1,7 +1,7 @@
 # External Dependencies
 
 ## Debian
-`apt-get install elixir npm postgres libmagic`
+`apt install elixir npm postgres libmagic-dev`
 
 Make sure to run `ln -s /usr/bin/nodejs /usr/bin/node` afterwards 
 
@@ -9,14 +9,27 @@ Make sure to run `ln -s /usr/bin/nodejs /usr/bin/node` afterwards
 
 ## PostgreSQL
 
-To setup for development or testing,
-run `sudo su postgres -c psql`
-followed by `alter user postgres with password 'postgres';` in the psql console
-(use a different password for prod)
+To setup for development:
+1. `sudo -u postgres psql`
+2. `create user athel password 'athel';`
+3. `create database athel_dev owner athel`
+4. `create database athel_test owner athel`
 
 ## Elixir
-- `mix deps.get` - pull in dependencies
-- `mix ecto.create && mix ecto.migrate` - initialize database
+
+1. `mix deps.get` - pull in dependencies
+2. Setup emagic
+3. `mix ecto.migrate` - initialize database
+4. `mix test` - run automated tests
+
+## emagic
+
+The emagic build doesn't currently copy the NIF library to the necessary directory.
+Swap '{dev,test}' for prod in production.
+
+1. `mkdir _build/{dev,test}/lib/emagic/priv`
+2. `cp deps/emagic/priv/emagic.so _build/dev/lib/emagic/priv`
+3. `cp deps/emagic/priv/emagic.so _build/test/lib/emagic/priv`
 
 ## Node.js
 
@@ -25,10 +38,6 @@ This is optional if you only care about NNTP
 - `npm -g install npm` - update npm to the latest version
 - `npm install` - pull local dependencies
 - `npm install -g brunch` - will put `brunch` into the path, can be skipped by using =node_modules/brunch/bin/brunch= directly
-
-## TODO emagic
-I had to copy the .so to somewhere for testing...<br>
-UPDATE: I'm not sure what I meant by this
 
 # Running
 

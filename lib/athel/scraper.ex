@@ -6,6 +6,6 @@ defmodule Athel.Scraper do
   end
 
   def init(:ok) do
-
+    
   end
 end
