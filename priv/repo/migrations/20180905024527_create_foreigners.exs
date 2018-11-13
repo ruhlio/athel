@@ -3,9 +3,11 @@ defmodule Athel.Repo.Migrations.CreateForeigners do
 
   def change do
     create table(:foreigners) do
-      add :url, :string, null: false
+      add :hostname, :string, null: false
+      add :port, :integer, null: false
       add :username, :string
       add :password, :binary
+      add :interval, :integer
 
       timestamps()
     end

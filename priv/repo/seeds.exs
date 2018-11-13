@@ -9,3 +9,14 @@
 #
 # We recommend using the bang functions (`insert!`, `update!`
 # and so on) as they will fail if something goes wrong.
+
+Athel.Repo.insert!(%Athel.Foreigner{
+      hostname: 'localhost',
+      port: 9119,
+      interval: 5,
+})
+
+Athel.Repo.insert!(%Athel.Group{
+      name: 'test',
+      description: 'test,
+})

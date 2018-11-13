@@ -2,11 +2,12 @@ defmodule Athel.Foreigner do
   use Ecto.Schema
   import Ecto.Changeset
 
-
   schema "foreigners" do
-    field :url, :string
+    field :hostname, :string
+    field :port, :integer
     field :username, :string
     field :password, Athel.EncryptedBinaryField
+    field :interval, :integer
 
     timestamps()
   end
@@ -14,7 +15,7 @@ defmodule Athel.Foreigner do
   @doc false
   def changeset(foreigner, attrs) do
     foreigner
-    |> cast(attrs, [:url, :username, :password])
-    |> validate_required([:url])
+    |> cast(attrs, [:hostname, :port, :username, :password, :interval])
+    |> validate_required([:hostname, :port, :interval])
   end
 end

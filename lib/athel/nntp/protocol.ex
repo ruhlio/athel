@@ -93,7 +93,7 @@ defmodule Athel.Nntp.Protocol do
       case message do
         {:error, type} ->
           message = "Syntax error in #{type}"
-          Logger.debug message
+          Logger.debug fn -> message end
           {{501, message}, []}
         {message, buffer} ->
           {GenServer.call(state.session_handler, message), buffer}
