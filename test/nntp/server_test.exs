@@ -148,6 +148,19 @@ defmodule Athel.Nntp.ServerTest do
     quit(socket)
   end
 
+  test "XOVER", %{socket: socket} do
+    _group = setup_models(2)
+
+    assert send_recv(socket, "XOVER\r\n") =~ status(420)
+    assert send_recv(socket, "XOVER 1-\r\n") =~ status(412)
+
+    send_recv(socket, "GROUP fun.times\r\n")
+    assert send_recv(socket, "XOVER 0\r\n") =~ ~r/224 XOVER OVER\r\n0\tTalking to myself\tMe\t\d{14}\t00@test.com\t\t34\t1/
+    multi_response = ~r/224 XOVER OVER\r\n0\tTalking to myself\tMe\t\d{14}\t00@test.com\t\t34\t1\r\n1\tTalking to myself\tMe\t\d{14}\t01@test.com\t\t34\t1/
+    assert send_recv(socket, "XOVER 0-\r\n") =~ multi_response
+    assert send_recv(socket, "XOVER 0-2\r\n") =~ multi_response
+  end
+
   test "LAST", %{socket: socket} do
     setup_models(3)
 

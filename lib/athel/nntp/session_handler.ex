@@ -7,6 +7,8 @@ defmodule Athel.Nntp.SessionHandler do
   alias Timex.Parse.DateTime.Tokenizers.Strftime
   alias Athel.{Repo, AuthService, NntpService, Group, Article, User}
 
+  @date_format "%Y%m%d%H%M%S"
+
   def start_link do
     GenServer.start_link(__MODULE__, :ok)
   end
@@ -88,6 +90,43 @@ defmodule Athel.Nntp.SessionHandler do
   end
 
   def list_articles([group_name, range], _) do
+    get_articles(range, group_name, &list_articles_response/2)
+  end
+
+  defp list_articles_response(articles, group) do
+    indexes = articles |> Enum.map(fn {index, _article} -> index end)
+    {:continue, {211, format_group_status(group), indexes}, %{group_name: group.name}}
+  end
+
+  command "XOVER", :xover, max_args: 2
+  def xover([], state) do
+    case state.article_index do
+      nil -> no_article_selected()
+      index -> xover(["#{index}"], state)
+    end
+  end
+
+  def xover([range], state) do
+    case state.group_name do
+      nil -> no_group_selected()
+      group_name -> get_articles(range, group_name, &xover_response/2)
+    end
+  end
+
+  defp xover_response(articles, group) when is_list(articles) do
+    metadata = Enum.map(articles, fn {index, article} ->
+      date = Timex.format!(article.date, @date_format, :strftime)
+      size = Enum.reduce(article.body, 0, fn line, sum -> sum + String.length(line) end)
+      "#{index}\t#{article.subject}\t#{article.from}\t#{date}\t#{article.message_id}\t#{article.parent_message_id}\t#{size}\t#{Enum.count(article.body)}"
+    end)
+    {:continue, {224, "XOVER OVER", metadata}}
+  end
+
+  defp xover_response(article, group) do
+    xover_response([article], group)
+  end
+
+  defp get_articles(range, group_name, responder) do
     case NntpService.get_group(group_name) do
       nil -> {:continue, {411, "No such group"}}
       group ->
@@ -96,27 +135,22 @@ defmodule Athel.Nntp.SessionHandler do
             {index, _} = Integer.parse(index)
             group
             |> NntpService.get_article_by_index(index)
-            |> list_articles_response(group)
+            |> responder.(group)
           [_, lower_bound, _unbounded] ->
             {lower_bound, _} = Integer.parse(lower_bound)
             group
             |> NntpService.get_article_by_index(lower_bound, :infinity)
-            |> list_articles_response(group)
+            |> responder.(group)
           [_, lower_bound, _, upper_bound] ->
             {lower_bound, _} = Integer.parse(lower_bound)
             {upper_bound, _} = Integer.parse(upper_bound)
             group
             |> NntpService.get_article_by_index(lower_bound, upper_bound)
-            |> list_articles_response(group)
+            |> responder.(group)
           nil ->
             {:error, {501, "Syntax error in range argument"}}
         end
     end
-  end
-
-  defp list_articles_response(articles, group) do
-    indexes = articles |> Enum.map(fn {index, _article} -> index end)
-    {:continue, {211, format_group_status(group), indexes}, %{group_name: group.name}}
   end
 
   command "LAST", :select_previous_article, max_args: 0
@@ -218,7 +252,7 @@ defmodule Athel.Nntp.SessionHandler do
             end
         end
       true ->
-        {:error, {501, "Invalid message id/index"}}
+        {:error, {501, "d message id/index"}}
     end
   end
 
@@ -322,7 +356,7 @@ defmodule Athel.Nntp.SessionHandler do
 
   command "DATE", :get_date, max_args: 0
   def get_date([], _) do
-    date = Timex.format!(Timex.now(), "%Y%m%d%H%M%S", :strftime)
+    date = Timex.format!(Timex.now(), @date_format, :strftime)
     {:continue, {111, date}}
   end
 
