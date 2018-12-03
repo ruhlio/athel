@@ -1,5 +1,6 @@
 defmodule Athel.Scraper do
   use GenServer
+  import Ecto.Query
   require Logger
   alias Athel.Nntp
 
@@ -16,7 +17,8 @@ defmodule Athel.Scraper do
   end
 
   def handle_info(:run, state) do
-    scrape_articles(state.groups, state.foreigner)
+    {:ok, session} = Nntp.Client.connect(state.foreigner.hostname, state.foreigner.port)
+    Enum.each state.groups, fn group -> scrape_articles(session, group) end
 
     Process.send_after(self(), :run, state.foreigner.interval)
   end
@@ -30,7 +32,26 @@ defmodule Athel.Scraper do
     matching_groups
   end
 
-  defp scrape_articles(groups, foreigner) do
-    
+  defp scrape_articles(session, group) do
+    :ok = Nntp.Client.set_group(session, group)
+    {:ok, ids} = Nntp.Client.xover(session)
+    id_set = MapSet.new ids
+    existing_ids = MapSet.new Repo.all(
+      from article in Article,
+      select: article.id)
+    new_ids = MapSet.difference(id_set, existing_ids)
+    new_id_count = MapSet.size(new_ids)
+    if new_id_count > 0 do
+      Logger.info fn -> "Found #{new_id_count} new messages for group #{group}" end
+      Enum.each new_ids, fn id -> fetch_id(session, id) end
+    end
+  end
+
+  defp fetch_id(session, id) do
+    {:ok, {headers, body}} = Nntp.Client.get_article(session, id)
+    case NntpService.take_article(headers, body) do
+      {:error, changeset} -> Logger.error "Failed to take article #{id}: #{changeset}"
+      ok -> Logger.info fn -> "Took article #{id}" end
+    end
   end
 end

@@ -22,16 +22,34 @@ defmodule Athel.Nntp.Client do
     |> format_error
   end
 
-  # @spec xover :: {:ok, []} | {:error, String.t}
-  # def xover do
-  #   with :ok <- :gen_tcp.send(socket, "XOVER\r\n"),
-  #        {:ok, {224, _}, body} <- read_and_parse(socket, [], &Parser.parse_code_line/1),
-  #        {:ok, lines, _} <- read_and_parse(socket, body, &Parser.parse_multiline/1),
-  #   do
-  #     article_indexes = Enum.map(lines, fn line -> line |> String.split |> List.first end)
-  #     {:ok, article_indexes}
-  #   end
-  # end
+  @spec set_group(:inet.socket, String.t) :: :ok | {:error, String.t}
+  def set_group(socket, group) do
+    :gen_tcp.send(socket, "GROUP #{group}\r\n") |> format_error
+  end
+
+  @spec xover(:inet.socket) :: {:ok, []} | {:error, String.t}
+  def xover(socket) do
+    with :ok <- :gen_tcp.send(socket, "XOVER\r\n"),
+         {:ok, {224, _}, body} <- read_and_parse(socket, [], &Parser.parse_code_line/1),
+         {:ok, lines, _} <- read_and_parse(socket, body, &Parser.parse_multiline/1)
+    do
+      article_ids = Enum.map(lines, fn line -> line |> String.split |> List.at(4) end)
+      case article_ids do
+        nil -> {:error, "Invalid server response"}
+        ids -> {:ok, ids}
+      end
+    end |> format_error
+  end
+
+  @spec get_article(:inet.socket, String.t) :: {:ok, {Map.t, []}} | {:error, String.t}
+  def get_article(socket, id) do
+    with :ok <- :gen_tcp.send(socket, "ARTICLE <#{id}>\r\n"),
+         {:ok, {223, _}, buffer} <- read_and_parse(socket, [], &Parser.parse_code_line/1),
+         {:ok, headers, buffer} <- read_and_parse(socket, buffer, &Parser.parse_headers/1),
+         {:ok, body, _} <- read_and_parse(socket, buffer, &Parser.parse_multiline/1),
+    do: {:ok, {headers, body}}
+    |> format_error
+  end
 
   @spec quit(:inet.socket) :: :ok | {:error, String.t}
   def quit(socket) do
