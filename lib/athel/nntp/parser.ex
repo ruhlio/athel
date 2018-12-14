@@ -11,9 +11,9 @@ defmodule Athel.Nntp.Parser do
     e -> e
   end
 
-  @spec parse_multiline(iodata) :: parse_result(list(String.t))
-  def parse_multiline(input) do
-    {lines, rest} = input |> IO.iodata_to_binary |> multiline([])
+  @spec parse_multiline(iodata, list(String.t)) :: parse_result(list(String.t))
+  def parse_multiline(input, acc \\ []) do
+    {lines, rest} = input |> IO.iodata_to_binary |> multiline(acc)
     {:ok, lines, rest}
   catch
     e -> e
@@ -100,14 +100,16 @@ defmodule Athel.Nntp.Parser do
   end
 
   defp multiline(<<".\r\n", rest :: binary>>, acc) do
+    IO.puts "Hit last line"
     {Enum.reverse(acc), rest}
   end
 
-  defp multiline("", _) do
-    need_more()
+  defp multiline("", acc) do
+    need_more(acc)
   end
 
   defp multiline(<<"..", rest :: binary>>, acc) do
+    IO.puts "Hit escaped line"
     # i believe binary concats are slower, but how often does escaping really happen?
     {line, rest} = line("." <> rest)
     multiline(rest, [line | acc])
@@ -279,8 +281,8 @@ defmodule Athel.Nntp.Parser do
     {name, arguments, rest}
   end
 
-  defp need_more() do
-    throw :need_more
+  defp need_more(state) do
+    throw {:need_more, state}
   end
 
   defp syntax_error(type) do

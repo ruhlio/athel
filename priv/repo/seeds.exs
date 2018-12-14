@@ -18,5 +18,5 @@ Athel.Repo.insert!(%Athel.Foreigner{
 
 Athel.Repo.insert!(%Athel.Group{
       name: 'test',
-      description: 'test,
+      description: 'test',
 })

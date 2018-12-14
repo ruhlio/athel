@@ -7,7 +7,7 @@ defmodule Athel.Repo.Migrations.CreateForeigners do
       add :port, :integer, null: false
       add :username, :string
       add :password, :binary
-      add :interval, :integer
+      add :interval, :integer, null: false
 
       timestamps()
     end
