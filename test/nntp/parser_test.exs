@@ -8,12 +8,20 @@ defmodule Athel.Nntp.ParserTest do
   end
 
   test "incomplete newline" do
-    assert parse_code_line("391 HEYO\r") == :need_more
+    {:need_more, {:line, acc, 391}} = parse_code_line("391 HEYO\r")
+    assert IO.iodata_to_binary(acc) == "HEYO\r"
   end
 
   test "invalid newline" do
     assert parse_code_line("404 SMELL YA LATER\r\a") == {:error, :line}
     assert parse_code_line("404 SMELL YA LATER\n") == {:error, :line}
+  end
+
+  test "newline split across inputs" do
+    {:need_more, good_state} = parse_code_line("404 WHADDUP\r")
+    {:need_more, bad_state} = parse_code_line("404 WHADDUP")
+    assert parse_code_line("\nmore", good_state) == {:ok, {404, "WHADDUP"}, "more"}
+    assert parse_code_line("\nmore", bad_state) == {:error, :line}
   end
 
   test "code too short" do
@@ -25,11 +33,15 @@ defmodule Athel.Nntp.ParserTest do
   end
 
   test "truncated code" do
-    assert parse_code_line("12") == :need_more
+    {:need_more, {:code, {acc, count}}} = parse_code_line("12")
+    assert IO.iodata_to_binary(acc) == "12"
+    assert count == 2
   end
 
   test "truncated line" do
-    assert parse_code_line("123 i could just") == :need_more
+    {:need_more, {:line, acc, code}} = parse_code_line("123 i could just")
+    assert code == 123
+    assert IO.iodata_to_binary(acc) == "i could just"
   end
 
   test "non-numerical code" do
@@ -51,8 +63,17 @@ defmodule Athel.Nntp.ParserTest do
   end
 
   test "unterminated multiline" do
-    multiline = parse_multiline("I SMELL LONDON\r\nI SMELL FRANCE\r\nI SMELL AN UNTERMINATED MULTILINE\r\n")
-    assert multiline == :need_more
+    {:need_more, {line_acc, acc}} = parse_multiline("I SMELL LONDON\r\nI SMELL FRANCE\r\nI SMELL AN UNTERMINATED MULTILINE\r\nwut")
+    assert IO.iodata_to_binary(line_acc) == "wut"
+    assert acc == ["I SMELL AN UNTERMINATED MULTILINE", "I SMELL FRANCE", "I SMELL LONDON"]
+  end
+
+  test "strange multiline" do
+    first = [[], "17428\tRe: Firefox support mailing list\tAnton Shepelev <anton.txt@gmail.com>\tSun, 29 Apr 2018 14:12:56 +0300\t<20180429141256.c921da46c2de9d8c4e5e102e@gmail.com>\t<20180429131604.4a1a24cda43904f0db317a00@gmail.com> <87o9i29uf7.fsf@ist.utl.pt>\t3214\t12\tXref: news.gmane.org gmane.discuss:17428\r\n17429\tRe: Firefox support mailing list\tasjo@koldfront.dk (Adam =?utf-8?Q?Sj=C3=B8gren?=)\tSun, 29 Apr 2018 14:04:34 +0200\t<87d0yicj71.fsf@tullinup.koldfront.dk>\t<20180429131604.4a1a24cda43904f0db317a00@gmail.com>\t4172\t12\tXref: news.gmane.org gmane.discuss:17429\r\n17430\tRe: Firefox support mailing list\tAnton Shepelev <anton.txt@gmail.com>\tSun, 29 Apr 2018 18:01:59 +0300\t<20180429180159.34c24d013a2dcae9935f6a6d@gmail.com>\t<20180429131604.4a1a24cda43904f0db317a00@gmail.com> <87d0yicj71.fsf@tullinup.koldfront.dk>\t3260\t13\tXref: news.gmane.org gmane.discuss:17430\r\n17431\tRe: Firefox support mailing list\tGood Guy <xfsgpr@hotmail.com>\tSun, 29 Apr 2018 17:38:10 +0100\t<pc4s9f$hi2$1@blaine.gmane.org>\t<20180429131604.4a1a24cda43904f0db317a00@gmail.com> <87d0yicj71.fsf@tullinup.koldfront.dk>\t3773\t11\tXref: news.gmane.org gmane.discuss:17431\r\n17432\tRe: Firefox support mailing list\t=?utf-8?Q?Adam_Sj=C3=B8gren?= <asjo@koldfront.dk>\tSun, 29 Apr 2018 19:27:20 +0200\t<87o9i1ncsn.fsf@tullinup.koldfront.dk>\t<20180429131604.4a1a24cda43904f0db317a00@gmail.com> <87d0yicj71.fsf@tullinup.koldfront.dk> <pc4s9f$hi2$1@blaine.gmane.org>\t4382\t13\tXref: new"]
+    second = [[], "scuss:17432\r\n.\r\n"]
+
+    {:need_more, state} = parse_multiline(first)
+    {:ok, _, ""} = parse_multiline(second)
   end
 
   test "valid headers" do
@@ -110,8 +131,8 @@ defmodule Athel.Nntp.ParserTest do
   end
 
   test "unterminated header entry parameters" do
-    assert parse_headers("Content-Type: attachment; boundary") == :need_more
-    assert parse_headers("Content-Type: attachment; boundary=nope;") == :need_more
+    {:need_more, _} = parse_headers("Content-Type: attachment; boundary")
+    {:need_more, _} = parse_headers("Content-Type: attachment; boundary=nope;")
   end
 
   test "prematurely terminated header param" do
@@ -123,7 +144,8 @@ defmodule Athel.Nntp.ParserTest do
   end
 
   test "unterminated headers" do
-    assert parse_headers("this-train: is off the tracks\r\n") == :need_more
+    {:need_more, {[], headers}} = parse_headers("this-train: is off the tracks\r\n")
+    assert headers == %{"THIS-TRAIN" => "is off the tracks"}
   end
 
   test "newline terminated header name" do
@@ -131,11 +153,11 @@ defmodule Athel.Nntp.ParserTest do
   end
 
   test "unterminated header name" do
-    assert parse_headers("just-must-fuss") == :need_more
+    {:need_more, _} = parse_headers("just-must-fuss")
   end
 
   test "unterminated header value" do
-    assert parse_headers("welcome: to the danger zone") == :need_more
+    {:need_more, _} = parse_headers("welcome: to the danger zone")
   end
 
   test "valid command with arguments" do
@@ -158,18 +180,24 @@ defmodule Athel.Nntp.ParserTest do
   end
 
   test "incomplete newline in command" do
-    command = parse_command("HAL\nP MY NEW\rLINES\r\n")
-    assert command == {:ok, {"HAL\nP", ["MY", "NEW\rLINES"]}, ""}
+    result = parse_command("HAL\nP MY NEW\rLINES\r\n")
+    assert result == {:error, :command}
   end
 
   test "unterminated command" do
-    command = parse_command("MARKET FRESH HORSEMEAT")
-    assert command == :need_more
+    {:need_more, good_state} = parse_command("MARKET FRESH HORSEMEAT\r")
+    {:need_more, bad_state} = parse_command("MARKET FRESH HORSEMEAT")
+    {command, [arg0], _} = good_state
+    assert IO.iodata_to_binary(command) == "MARKET"
+    assert IO.iodata_to_binary(arg0) == "FRESH"
+
+    assert {:error, :command} == parse_command("\n", bad_state)
+    assert {:ok, {"MARKET", ["FRESH", "HORSEMEAT"]}, "uh"} == parse_command("\nuh", good_state)
   end
 
   test "unterminated command without arguments" do
-    command = parse_command("ants")
-    assert command == :need_more
+    {:need_more, {[], [], acc}} = parse_command("ants")
+    assert IO.iodata_to_binary(acc) == "ants"
   end
 
 end

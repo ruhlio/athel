@@ -1,35 +1,34 @@
 defmodule Athel.Nntp.Parser do
 
-  @type parse_result(parsed) :: {:ok, parsed, iodata} | {:error, atom} | :need_more
+  @type parse_result(parsed) :: {:ok, parsed, iodata} | {:error, atom} | {:need_more, any()}
 
   @spec parse_code_line(iodata) :: parse_result({integer, String.t})
-  def parse_code_line(input) do
-    {code, rest} = input |> IO.iodata_to_binary |> code
-    {line, rest} = rest |> skip_whitespace |> line
-    {:ok, {code, line}, rest}
+  def parse_code_line(input, state \\ nil) do
+    {result, rest} = input |> IO.iodata_to_binary |> code_line(state)
+    {:ok, result, rest}
   catch
     e -> e
   end
 
   @spec parse_multiline(iodata, list(String.t)) :: parse_result(list(String.t))
-  def parse_multiline(input, acc \\ []) do
-    {lines, rest} = input |> IO.iodata_to_binary |> multiline(acc)
+  def parse_multiline(input, state \\ nil) do
+    {lines, rest} = input |> IO.iodata_to_binary |> multiline(state)
     {:ok, lines, rest}
   catch
     e -> e
   end
 
   @spec parse_headers(iodata) :: parse_result(%{optional(String.t) => String.t})
-  def parse_headers(input) do
-    {headers, rest} = input |> IO.iodata_to_binary |> headers(%{})
+  def parse_headers(input, state \\ nil) do
+    {headers, rest} = input |> IO.iodata_to_binary |> headers(state)
     {:ok, headers, rest}
   catch
     e -> e
   end
 
   @spec parse_command(iodata) :: parse_result({String.t, list(String.t)})
-  def parse_command(input) do
-    {name, arguments, rest} = input |> IO.iodata_to_binary |> command
+  def parse_command(input, state \\ nil) do
+    {name, arguments, rest} = input |> IO.iodata_to_binary |> command(state)
     {:ok, {name, arguments}, rest}
   catch
     e -> e
@@ -37,18 +36,15 @@ defmodule Athel.Nntp.Parser do
 
   @digits '0123456789'
 
-  defp code(input) do
+  defp code(input, nil) do
     code(input, {[], 0})
   end
-
   defp code(<<digit, rest :: binary>>, {acc, count}) when digit in @digits do
     code(rest, {[acc, digit], count + 1})
   end
-
-  defp code("", {_, count}) when count < 3 do
-    need_more()
+  defp code("", {acc, count}) when count < 3 do
+    need_more({acc, count})
   end
-
   defp code(next, state) do
     end_code(state, next)
   end
@@ -56,8 +52,7 @@ defmodule Athel.Nntp.Parser do
   defp end_code({acc, 3}, rest) do
     {acc |> IO.iodata_to_binary |> String.to_integer, rest}
   end
-
-  defp end_code(_, _) do
+  defp end_code(_in, _acc) do
     syntax_error(:code)
   end
 
@@ -66,153 +61,189 @@ defmodule Athel.Nntp.Parser do
   defp skip_whitespace(<<char :: utf8, rest :: binary>>) when char in @whitespace do
     rest
   end
-
   defp skip_whitespace(string) do
     string
   end
 
-  defp line(input) do
-    line(input, [])
+  defp line("", acc) do
+    need_more(acc)
   end
-
   defp line(<<"\r\n", rest :: binary>>, acc)  do
     {IO.iodata_to_binary(acc), rest}
   end
-
+  # newline split across reads
+  defp line(<<?\r>>, acc) do
+    need_more([acc, ?\r])
+  end
+  # if there is more after \r, enforce \n
   defp line(<<?\r, next>>, _) when next != ?\n do
     syntax_error(:line)
   end
-
-  defp line(<<?\n, _ :: binary>>, _) do
-    syntax_error(:line)
+  # end of newline split across reads. Read backwards to confirm \r preceded
+  defp line(<<?\n, rest :: binary>>, acc) do
+    [head | tail] = acc
+    case tail do
+      '\r' -> {IO.iodata_to_binary(head), rest}
+      _ -> syntax_error(:line)
+    end
   end
-
   defp line(<<char, rest :: binary>>, acc) do
     line(rest, [acc, char])
   end
-
-  defp line("", _) do
-    need_more()
-  end
-
   defp line(_, _) do
     syntax_error(:line)
   end
 
-  defp multiline(<<".\r\n", rest :: binary>>, acc) do
-    IO.puts "Hit last line"
-    {Enum.reverse(acc), rest}
+  # code_line state is {:code, current_code} | {:line, current_line, code}
+  # resume
+  defp code_line(input, {:code, acc}) do
+    code_line(input, acc)
+  end
+  defp code_line(input, {:line, acc, code}) do
+    end_code_line(input, acc, code)
+  end
+  # parse
+  defp code_line(input, acc) do
+    {code, rest} = try do
+      code(input, acc)
+    catch
+      {:need_more, acc} -> need_more({:code, acc})
+    end
+
+    end_code_line(rest, [], code)
   end
 
-  defp multiline("", acc) do
-    need_more(acc)
+  defp end_code_line(input, acc, code) do
+    {line, rest} =
+      try do
+        input |> skip_whitespace |> line(acc)
+      catch
+        {:need_more, acc} -> need_more({:line, acc, code})
+      end
+    {{code, line}, rest}
   end
 
-  defp multiline(<<"..", rest :: binary>>, acc) do
-    IO.puts "Hit escaped line"
-    # i believe binary concats are slower, but how often does escaping really happen?
-    {line, rest} = line("." <> rest)
-    multiline(rest, [line | acc])
+  # multiline state is {current_line, lines}
+  # first iteration
+  defp multiline(input, nil) do
+    multiline(input, {[], []})
+  end
+  # no input
+  defp multiline("", state) do
+    need_more(state)
+  end
+  # parsing
+  defp multiline(input, {line_acc, acc}) do
+    {line, rest} =
+      try do
+        line(input, line_acc)
+      catch
+        {:need_more, next_line_acc} -> need_more({next_line_acc, acc})
+      end
+
+    #IO.puts "at #{inspect(line)} with #{inspect rest} after #{inspect input}"
+    case line do
+      # escaped leading .
+      <<"..", line_rest :: binary>> ->
+        escaped_line = "." <> line_rest
+        multiline(rest, {[], [escaped_line | acc]})
+      # termination
+      <<".">> -> {Enum.reverse(acc), rest}
+      # leading . that neither terminated nor was escaped is invalid
+      <<".", _ :: binary>> ->
+        syntax_error(:multiline)
+      # else keep reading
+      line -> multiline(rest, {[], [line | acc]})
+    end
   end
 
-  defp multiline(<<".", next, _ :: binary>>, _) when next != "\r" and next != "." do
-    syntax_error(:multiline)
+  # headers state is {current_line, headers}
+  # :need_more is only handled at the top level (via reading in a whole line at a time) for simplicity
+  # initialize
+  defp headers(input, nil) do
+    headers(input, {[], %{}})
+  end
+  defp headers("", state) do
+    need_more(state)
+  end
+  # parse
+  defp headers(input, {line_acc, acc}) do
+    {line, rest} =
+      try do
+        line(input, line_acc)
+      catch
+        {:need_more, next_line_acc} -> need_more({next_line_acc, acc})
+      end
+
+    case line do
+      # empty line signifies end of headers
+      "" -> {acc, rest}
+      line ->
+        {name, rest_value} = header_name(line, [])
+        value = header_value(skip_whitespace(rest_value), [])
+        new_acc = Map.put(acc, name, value)
+        headers(rest, {[], new_acc})
+    end
   end
 
-  defp multiline(input, acc) do
-    {line, rest} = line(input)
-    multiline(rest,  [line | acc])
-  end
-
-  defp headers(<<"\r\n", rest :: binary>>, acc) do
-    {acc, rest}
-  end
-
-  defp headers("", _) do
-    need_more()
-  end
-
-  defp headers(input, acc) do
-    {name, rest} = header_name(input, [])
-    {value, rest} = header_value(skip_whitespace(rest), [])
-    headers(rest, Map.put(acc, name, value))
-  end
-
+  # hit EOL without ":" separator
+  defp header_name("", _), do: syntax_error(:header_name)
+  # termination
   defp header_name(<<":", rest :: binary>>, acc) do
     {acc |> IO.iodata_to_binary |> String.upcase, rest}
   end
-
+  # no whitespace in header names
+  defp header_name(<<next, _ :: binary>>, _) when next in @whitespace, do: syntax_error(:header_name)
+  # parse
   defp header_name(<<next, rest :: binary>>, acc) do
-    #todo: `not in` guard?
-    if next in @whitespace or next in '\r\n', do: syntax_error(:header_name)
     header_name(rest, [acc, next])
   end
 
-  defp header_name("", _) do
-    need_more()
+  # termination
+  defp header_value("", acc) do
+    acc |> IO.iodata_to_binary
   end
-
-  defp header_value("", _) do
-    need_more()
-  end
-
-  defp header_value(<<"\r\n", rest :: binary>>, acc) do
-    {acc |> IO.iodata_to_binary, rest}
-  end
-
+  # start of params
   defp header_value(<<";", rest :: binary>>, acc) do
-    {params, rest} = header_params(rest, %{})
-    {{acc |> IO.iodata_to_binary, params}, rest}
+    params = header_params(rest, %{})
+    {acc |> IO.iodata_to_binary, params}
   end
-
+  # parse
   defp header_value(<<char, rest :: binary>>, acc) do
     header_value(rest, [acc, char])
   end
 
-  defp header_params(<<"\r\n", rest :: binary>>, params) do
-    {params, rest}
-  end
-
-  defp header_params("", _) do
-    need_more()
-  end
-
+  # termination
+  defp header_params("", params), do: params
+  # parse
   defp header_params(input, params) do
     {param_name, rest} = header_param_name(input, [])
     {param_value, rest} = header_param_value(rest, {[], false})
     header_params(rest, params |> Map.put(param_name, param_value))
   end
 
-  defp header_param_name("", _) do
-    need_more()
-  end
-
+  # never found "=" separator
+  defp header_param_name("", _), do: syntax_error(:header_param_name)
   # eat leading whitespace
   defp header_param_name(<<char, rest :: binary>>, []) when char in ' \t' do
     header_param_name(rest, [])
   end
-
+  # termination
   defp header_param_name(<<"=", rest :: binary>>, acc) do
     {acc |> IO.iodata_to_binary, rest}
   end
-
+  # parse
   defp header_param_name(<<char, rest :: binary>>, acc) do
-    if char in '\r\n', do: syntax_error(:header_param_name)
     header_param_name(rest, [acc, char])
   end
 
-  defp header_param_value("", _) do
-    need_more()
+  # termination
+  defp header_param_value("", {acc, _}) do
+    {acc |> IO.iodata_to_binary, ""}
   end
-
-  defp header_param_value(rest = <<"\r\n", _ :: binary>>, {acc, _}) do
-    {acc |> IO.iodata_to_binary, rest}
-  end
-
   defp header_param_value(<<";", rest :: binary>>, {acc, _}) do
     {acc |> IO.iodata_to_binary, rest}
   end
-
   # handle boundary="commadelimited"
   defp header_param_value(<<"\"", rest :: binary>>, {acc, delimited}) do
     cond do
@@ -228,54 +259,73 @@ defmodule Athel.Nntp.Parser do
         header_param_value(rest, {[acc, "\""], false})
     end
   end
-
+  # parse
   defp header_param_value(<<char, rest :: binary>>, {acc, delimited}) do
     header_param_value(rest, {[acc, char], delimited})
   end
 
-  defp command(input) do
+  # command state is {command_name, arguments, current_identifier}
+  # initialize
+  defp command(input, nil) do
     command(input, {[], [], []})
   end
-
   # end of command
-  defp command(<<"\r\n", rest :: binary>>, {command, arguments, acc}) do
-    if Enum.empty? command do
-      if Enum.empty? acc do
-        syntax_error(:command)
-      else
-        end_command(acc, arguments, rest)
-      end
-    else
-      end_command(command, [acc | arguments], rest)
+  defp command(<<"\r\n", rest :: binary>>, state) do
+    end_command(state, rest)
+  end
+  # newline split across reads
+  defp command(<<?\r>>, {name, arguments, acc}) do
+    need_more({name, arguments, [acc, ?\r]})
+  end
+  # if there is more after \r, enforce \n
+  defp command(<<?\r, next>>, _) when next != ?\n do
+    syntax_error(:command)
+  end
+  # end of newline split across reads. Read backwards to confirm \r preceded
+  defp command(<<?\n, rest :: binary>>, {command, arguments, acc}) do
+    [head | tail] = acc
+    case tail do
+      '\r' -> end_command({command, arguments, head}, rest)
+      _ -> syntax_error(:command)
     end
   end
-
   # need more
-  defp command("", _) do
-    need_more()
+  defp command("", acc) do
+    need_more(acc)
   end
-
   # end of command name
   defp command(<<next, rest :: binary>>, {[], [], acc}) when next in @whitespace do
     command(rest, {acc, [], []})
   end
-
   # reading command name
   defp command(<<next, rest :: binary>>, {[], [], acc}) do
     command(rest, {[], [], [acc, next]})
   end
-
   # end of argument
   defp command(<<next, rest :: binary>>, {name, arguments, acc}) when next in @whitespace do
     command(rest, {name, [acc | arguments], []})
   end
-
   # reading argument
   defp command(<<next, rest :: binary>>, {name, arguments, acc}) do
     command(rest, {name, arguments, [acc, next]})
   end
 
-  defp end_command(name, arguments, rest) do
+  defp end_command({name, arguments, acc}, rest) do
+    {name, arguments} =
+    if Enum.empty? name do
+      if Enum.empty? acc do
+        syntax_error(:command)
+      else
+        {acc, []}
+      end
+    else
+      if Enum.empty? acc do
+        {name, arguments}
+      else
+        {name, [acc | arguments]}
+      end
+    end
+
     name = name |> IO.iodata_to_binary |> String.upcase
     arguments = arguments |> Enum.map(&IO.iodata_to_binary/1) |> Enum.reverse
     {name, arguments, rest}

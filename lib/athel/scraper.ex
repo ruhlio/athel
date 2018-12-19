@@ -43,7 +43,7 @@ defmodule Athel.Scraper do
     id_set = MapSet.new ids
     existing_ids = MapSet.new Repo.all(
       from article in Article,
-      select: article.id)
+      select: article.message_id)
     new_ids = MapSet.difference(id_set, existing_ids)
     new_id_count = MapSet.size(new_ids)
     if new_id_count > 0 do
