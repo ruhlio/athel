@@ -18,7 +18,7 @@ defmodule Athel.Nntp.Parser do
     e -> e
   end
 
-  @spec parse_headers(iodata) :: parse_result(%{optional(String.t) => String.t})
+  @spec parse_headers(iodata) :: parse_result(%{optional(String.t) => String.t | list(String.t)})
   def parse_headers(input, state \\ nil) do
     {headers, rest} = input |> IO.iodata_to_binary |> headers(state)
     {:ok, headers, rest}
@@ -157,33 +157,61 @@ defmodule Athel.Nntp.Parser do
     end
   end
 
-  # headers state is {current_line, headers}
+  # headers state is {current_line, headers, previous_header}
+  # previous header is for handling multiline headers
   # :need_more is only handled at the top level (via reading in a whole line at a time) for simplicity
   # initialize
   defp headers(input, nil) do
-    headers(input, {[], %{}})
+    headers(input, {[], %{}, nil})
   end
   defp headers("", state) do
     need_more(state)
   end
   # parse
-  defp headers(input, {line_acc, acc}) do
+  defp headers(input, {line_acc, acc, prev_header}) do
     {line, rest} =
       try do
         line(input, line_acc)
       catch
-        {:need_more, next_line_acc} -> need_more({next_line_acc, acc})
+        {:need_more, next_line_acc} -> need_more({next_line_acc, acc, prev_header})
       end
 
-    case line do
+    cond do
       # empty line signifies end of headers
-      "" -> {acc, rest}
-      line ->
-        {name, rest_value} = header_name(line, [])
-        value = header_value(skip_whitespace(rest_value), [])
-        new_acc = Map.put(acc, name, value)
-        headers(rest, {[], new_acc})
+      "" == line -> {acc, rest}
+      # multiline header. Just slap onto previous header's value with a space
+      line =~ ~r/^\s+/ ->
+          case prev_header do
+            nil -> syntax_error(:multiline_header)
+            _ ->
+              value = header_value(line, {[], prev_header})
+              new_acc = Map.update(acc, prev_header, value, &merge_header_lines(&1, value))
+              headers(rest, {[], new_acc, prev_header})
+          end
+      true ->
+          {name, rest_value} = header_name(line, [])
+          value = header_value(skip_whitespace(rest_value), {[], name})
+          new_acc = Map.update(acc, name, value, &merge_headers(&1, value))
+          headers(rest, {[], new_acc, name})
     end
+  end
+
+  # values are inserted backwards while merging
+  # currently doesn't handle headers with params
+
+  defp merge_header_lines(prev, next) when is_list(prev) do
+    [last | rest] = prev
+    ["#{last} #{String.trim_leading(next)}" | rest]
+  end
+  defp merge_header_lines(prev, next) do
+    "#{prev} #{String.trim_leading(next)}"
+  end
+
+  defp merge_headers(prev, new) when is_list(prev) do
+    [new | prev]
+  end
+  defp merge_headers(prev, new) do
+    [new, prev]
   end
 
   # hit EOL without ":" separator
@@ -199,18 +227,21 @@ defmodule Athel.Nntp.Parser do
     header_name(rest, [acc, next])
   end
 
+  @param_headers ["CONTENT-TYPE"]
+
+  # header_value state is {current_value, header_name}
   # termination
-  defp header_value("", acc) do
+  defp header_value("", {acc, _}) do
     acc |> IO.iodata_to_binary
   end
   # start of params
-  defp header_value(<<";", rest :: binary>>, acc) do
+  defp header_value(<<";", rest :: binary>>, {acc, header_name}) when header_name in @param_headers do
     params = header_params(rest, %{})
     {acc |> IO.iodata_to_binary, params}
   end
   # parse
-  defp header_value(<<char, rest :: binary>>, acc) do
-    header_value(rest, [acc, char])
+  defp header_value(<<char, rest :: binary>>, {acc, header_name}) do
+    header_value(rest, {[acc, char], header_name})
   end
 
   # termination

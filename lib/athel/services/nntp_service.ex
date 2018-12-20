@@ -98,26 +98,28 @@ defmodule Athel.NntpService do
         subject: headers["SUBJECT"],
         date: Timex.now(),
         content_type: headers["CONTENT-TYPE"],
-        status: "active"})
+        status: "active"},
+      false)
   end
 
   @spec take_article(headers, list(String.t)) :: new_article_result
-  def take_article(headers, body) do
+  def take_article(headers, body, allow_orphan \\ false) do
     save_article(headers, body,
       %{message_id: headers["MESSAGE-ID"],
         date: headers["DATE"],
         from: headers["FROM"],
         subject: headers["SUBJECT"],
         content_type: headers["CONTENT-TYPE"],
-        status: "active"})
+        status: "active"},
+      allow_orphan)
   end
 
-  defp save_article(headers, body, params) do
+  defp save_article(headers, body, params, allow_orphan) do
     with {:ok, {body, attachments}} <- read_body(headers, body) do
       changeset = %Article{}
       |> Article.changeset(Map.put(params, :body, body))
       |> set_groups(headers)
-      |> set_parent(headers)
+      |> set_parent(headers, allow_orphan)
       |> set_attachments(attachments)
 
       Repo.insert(changeset)
@@ -147,13 +149,13 @@ defmodule Athel.NntpService do
     end
   end
 
-  defp set_parent(changeset, headers) do
+  defp set_parent(changeset, headers, allow_orphan) do
     parent_message_id = headers["REFERENCES"]
-    parent = unless is_nil(parent_message_id) do
+    parent = unless allow_orphan || is_nil(parent_message_id) do
       Repo.get(Article, parent_message_id)
     end
 
-    if is_nil(parent) && !is_nil(parent_message_id) do
+    if !allow_orphan && is_nil(parent) && !is_nil(parent_message_id) do
       Changeset.add_error(changeset, :parent, "is invalid")
     else
       Changeset.put_assoc(changeset, :parent, parent)

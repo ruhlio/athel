@@ -3,6 +3,12 @@ defmodule Athel.Nntp.ParserTest do
 
   import Athel.Nntp.Parser
 
+  test "code and multiline" do
+    input = "215 Order of fields in overview database\r\nSubject:\r\nFrom:\r\nDate:\r\nMessage-ID:\r\nReferences:\r\nBytes:\r\nLines:\r\nXref:full\r\n.\r\n"
+    {:ok, {215, "Order of fields in overview database"}, rest} = parse_code_line(input)
+    assert {:ok, ["Subject:", "From:", "Date:", "Message-ID:", "References:", "Bytes:", "Lines:", "Xref:full"], ""} == parse_multiline(rest)
+  end
+
   test "valid code line" do
     assert parse_code_line(["203 all clear", "\r\n"]) == {:ok, {203, "all clear"}, ""}
   end
@@ -68,20 +74,35 @@ defmodule Athel.Nntp.ParserTest do
     assert acc == ["I SMELL AN UNTERMINATED MULTILINE", "I SMELL FRANCE", "I SMELL LONDON"]
   end
 
-  test "strange multiline" do
-    first = [[], "17428\tRe: Firefox support mailing list\tAnton Shepelev <anton.txt@gmail.com>\tSun, 29 Apr 2018 14:12:56 +0300\t<20180429141256.c921da46c2de9d8c4e5e102e@gmail.com>\t<20180429131604.4a1a24cda43904f0db317a00@gmail.com> <87o9i29uf7.fsf@ist.utl.pt>\t3214\t12\tXref: news.gmane.org gmane.discuss:17428\r\n17429\tRe: Firefox support mailing list\tasjo@koldfront.dk (Adam =?utf-8?Q?Sj=C3=B8gren?=)\tSun, 29 Apr 2018 14:04:34 +0200\t<87d0yicj71.fsf@tullinup.koldfront.dk>\t<20180429131604.4a1a24cda43904f0db317a00@gmail.com>\t4172\t12\tXref: news.gmane.org gmane.discuss:17429\r\n17430\tRe: Firefox support mailing list\tAnton Shepelev <anton.txt@gmail.com>\tSun, 29 Apr 2018 18:01:59 +0300\t<20180429180159.34c24d013a2dcae9935f6a6d@gmail.com>\t<20180429131604.4a1a24cda43904f0db317a00@gmail.com> <87d0yicj71.fsf@tullinup.koldfront.dk>\t3260\t13\tXref: news.gmane.org gmane.discuss:17430\r\n17431\tRe: Firefox support mailing list\tGood Guy <xfsgpr@hotmail.com>\tSun, 29 Apr 2018 17:38:10 +0100\t<pc4s9f$hi2$1@blaine.gmane.org>\t<20180429131604.4a1a24cda43904f0db317a00@gmail.com> <87d0yicj71.fsf@tullinup.koldfront.dk>\t3773\t11\tXref: news.gmane.org gmane.discuss:17431\r\n17432\tRe: Firefox support mailing list\t=?utf-8?Q?Adam_Sj=C3=B8gren?= <asjo@koldfront.dk>\tSun, 29 Apr 2018 19:27:20 +0200\t<87o9i1ncsn.fsf@tullinup.koldfront.dk>\t<20180429131604.4a1a24cda43904f0db317a00@gmail.com> <87d0yicj71.fsf@tullinup.koldfront.dk> <pc4s9f$hi2$1@blaine.gmane.org>\t4382\t13\tXref: new"]
-    second = [[], "scuss:17432\r\n.\r\n"]
-
-    {:need_more, state} = parse_multiline(first)
-    {:ok, _, ""} = parse_multiline(second)
-  end
-
   test "valid headers" do
     headers = parse_headers(["Content-Type: funky/nasty\r\nBoogie-Nights: You missed that boat\r\n", "\r\n"])
     assert headers == {:ok,
                        %{"CONTENT-TYPE" => "funky/nasty",
                          "BOOGIE-NIGHTS" => "You missed that boat"},
                        ""}
+  end
+
+  test "multiline duplicate headers" do
+    input = "References: <uadloawcn.fsf@assurancetourix.xs4all.nl> <m31y6z61sk.fsf@quimbies.gnus.org>\r
+    <uadldpsph.fsf@assurancetourix.xs4all.nl>\r
+    <m3of9t1mj8.fsf@quimbies.gnus.org>\r
+    <uelap30l9.fsf@assurancetourix.xs4all.nl>\r
+Original-Received: from quimby.gnus.org ([80.91.224.244])\r
+	  by main.gmane.org with esmtp (Exim 3.35 #1 (Debian))\r
+	  id 1827JK-0006HD-00\r
+	  for <gmane-discuss-account@main.gmane.org>; Thu, 17 Oct 2002 11:51:22 +0200\r
+Original-Received: from hawk.netfonds.no ([80.91.224.246])\r
+	  by quimby.gnus.org with esmtp (Exim 3.12 #1 (Debian))\r
+	  id 1828BC-0005rd-00\r
+	  for <gmane-discuss-account@quimby.gnus.org>; Thu, 17 Oct 2002 12:47:02 +0200\r\n\r\n"
+
+    assert parse_headers(input) == {:ok,
+                      %{"REFERENCES" => "<uadloawcn.fsf@assurancetourix.xs4all.nl> <m31y6z61sk.fsf@quimbies.gnus.org> <uadldpsph.fsf@assurancetourix.xs4all.nl> <m3of9t1mj8.fsf@quimbies.gnus.org> <uelap30l9.fsf@assurancetourix.xs4all.nl>",
+                        "ORIGINAL-RECEIVED" => [
+                          "from hawk.netfonds.no ([80.91.224.246]) by quimby.gnus.org with esmtp (Exim 3.12 #1 (Debian)) id 1828BC-0005rd-00 for <gmane-discuss-account@quimby.gnus.org>; Thu, 17 Oct 2002 12:47:02 +0200",
+                          "from quimby.gnus.org ([80.91.224.244]) by main.gmane.org with esmtp (Exim 3.35 #1 (Debian)) id 1827JK-0006HD-00 for <gmane-discuss-account@main.gmane.org>; Thu, 17 Oct 2002 11:51:22 +0200"
+                        ]
+                      }, ""}
   end
 
   test "header value with parameters" do
@@ -144,7 +165,7 @@ defmodule Athel.Nntp.ParserTest do
   end
 
   test "unterminated headers" do
-    {:need_more, {[], headers}} = parse_headers("this-train: is off the tracks\r\n")
+    {:need_more, {[], headers, "THIS-TRAIN"}} = parse_headers("this-train: is off the tracks\r\n")
     assert headers == %{"THIS-TRAIN" => "is off the tracks"}
   end
 
