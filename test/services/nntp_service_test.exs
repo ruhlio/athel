@@ -106,6 +106,25 @@ defmodule Athel.NntpServiceTest do
     assert (article.groups |> Enum.map(&(&1.name))) == [group.name]
   end
 
+  test "post with non-UTF-8 body encoding" do
+    setup_models()
+
+    headers = %{
+      "SUBJECT" => "Re: idea for GMane: treat RSS feeds as mailing lists
+      ",
+      "NEWSGROUPS" => "fun.times",
+      #TODO: decode characterset here also
+      "FROM" => "asjo@koldfront.dk (Adam =?iso-8859-1?Q?Sj=F8gren?=)",
+      "CONTENT-TYPE" => {"text/plain", %{"CHARSET" => "iso-8859-1"}}
+    }
+    body = File.stream!("test/services/danish_body.txt") |> Enum.to_list
+
+    {:ok, article} = post_article(headers, body)
+    assert article.body == [
+      " \"You have to photosynthesize\"                                Adam Sjøgren\n",
+      "                                                         asjo@koldfront.dk\n"]
+  end
+
   test "post with attachments" do
     setup_models()
 
@@ -114,7 +133,7 @@ defmodule Athel.NntpServiceTest do
         "FROM" => "Chef Mandude <surferdude88@hotmail.com>",
         "NEWSGROUPS" => "fun.times",
         "MIME-VERSION" => "1.0",
-        "CONTENT-TYPE" => {"multipart/mixed", %{"boundary" => "surfsup"}}}
+        "CONTENT-TYPE" => {"multipart/mixed", %{"BOUNDARY" => "surfsup"}}}
     body =
       ["--surfsup",
        "Content-Transfer-Encoding: base64",
@@ -138,7 +157,7 @@ defmodule Athel.NntpServiceTest do
         "FROM" => "Chef Mandude <surferdude88@hotmail.com>",
         "NEWSGROUPS" => "fun.times",
         "MIME-VERSION" => "1.0",
-        "CONTENT-TYPE" => {"multipart/mixed", %{"boundary" => "surfsup"}}}
+        "CONTENT-TYPE" => {"multipart/mixed", %{"BOUNDARY" => "surfsup"}}}
     single_attachment_body =
       ["--surfsup",
        "Content-Transfer-Encoding: base64",
@@ -176,7 +195,7 @@ defmodule Athel.NntpServiceTest do
         "FROM" => "Chef Mandude <surferdude88@hotmail.com>",
         "NEWSGROUPS" => "fun.times",
         "MIME-VERSION" => "1.0",
-        "CONTENT-TYPE" => {"multipart/mixed", %{"boundary" => "surfsup"}}}
+        "CONTENT-TYPE" => {"multipart/mixed", %{"BOUNDARY" => "surfsup"}}}
     body =
       ["--surfsup",
        "body",
@@ -202,7 +221,7 @@ defmodule Athel.NntpServiceTest do
         "FROM" => "Chef Mandude <surferdude88@hotmail.com>",
         "NEWSGROUPS" => "fun.times",
         "MIME-VERSION" => "1.0",
-        "CONTENT-TYPE" => {"multipart/mixed", %{"boundary" => "surfsup"}}}
+        "CONTENT-TYPE" => {"multipart/mixed", %{"BOUNDARY" => "surfsup"}}}
 
     body =
       ["--surfsup",

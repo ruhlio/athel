@@ -112,8 +112,8 @@ Original-Received: from hawk.netfonds.no ([80.91.224.246])\r
     assert result == {:ok,
                       %{"CONTENT-TYPE" =>
                         {"attachment",
-                         %{"boundary" => "hearsay",
-                           "pants" => "off"}}},
+                         %{"BOUNDARY" => "hearsay",
+                           "PANTS" => "off"}}},
                       ""}
   end
 
@@ -124,7 +124,7 @@ Original-Received: from hawk.netfonds.no ([80.91.224.246])\r
        "Kind: of\r\n",
        "\r\n"])
     assert result == {:ok,
-                      %{"CONTENT-TYPE" => {"text/plain", %{"charset" => "utf-8"}},
+                      %{"CONTENT-TYPE" => {"text/plain", %{"CHARSET" => "utf-8"}},
                         "SUBJECT" => "None",
                         "KIND" => "of"},
                       ""}
@@ -137,8 +137,8 @@ Original-Received: from hawk.netfonds.no ([80.91.224.246])\r
     assert result == {:ok,
                       %{"CONTENT-TYPE" =>
                         {"attachment",
-                         %{"boundary" => "hearsay",
-                           "unnecessary" => "unfortunately"}}},
+                         %{"BOUNDARY" => "hearsay",
+                           "UNNECESSARY" => "unfortunately"}}},
                       ""}
 
     result = parse_headers(
@@ -147,7 +147,18 @@ Original-Received: from hawk.netfonds.no ([80.91.224.246])\r
     assert result == {:ok,
                       %{"CONTENT-TYPE" =>
                         {"form-data",
-                         %{"boundary" => "keep_this\""}}},
+                         %{"BOUNDARY" => "keep_this\""}}},
+                      ""}
+  end
+
+  test "header with params split across lines" do
+    result = parse_headers("Content-Type: multipart/signed; boundary=\"=-=-=\";\r
+	  micalg=pgp-sha1; protocol=\"application/pgp-signature\"\r\n\r\n")
+    assert result == {:ok,
+                      %{"CONTENT-TYPE" => {"multipart/signed",
+                                           %{"BOUNDARY" => "=-=-=",
+                                             "MICALG" => "pgp-sha1",
+                                             "PROTOCOL" => "application/pgp-signature"}}},
                       ""}
   end
 

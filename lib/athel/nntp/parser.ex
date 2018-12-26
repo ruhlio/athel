@@ -184,8 +184,8 @@ defmodule Athel.Nntp.Parser do
           case prev_header do
             nil -> syntax_error(:multiline_header)
             _ ->
-              value = header_value(line, {[], prev_header})
-              new_acc = Map.update(acc, prev_header, value, &merge_header_lines(&1, value))
+              new_acc = Map.update(acc, prev_header, "",
+                &merge_header_lines(&1, line, prev_header))
               headers(rest, {[], new_acc, prev_header})
           end
       true ->
@@ -199,12 +199,17 @@ defmodule Athel.Nntp.Parser do
   # values are inserted backwards while merging
   # currently doesn't handle headers with params
 
-  defp merge_header_lines(prev, next) when is_list(prev) do
+  defp merge_header_lines(prev, line, name) when is_list(prev) do
     [last | rest] = prev
-    ["#{last} #{String.trim_leading(next)}" | rest]
+    [merge_header_lines(last, line, name) | rest]
   end
-  defp merge_header_lines(prev, next) do
-    "#{prev} #{String.trim_leading(next)}"
+  defp merge_header_lines({value, params}, line, _) do
+    next_params = header_params(line, params)
+    {value, next_params}
+  end
+  defp merge_header_lines(prev, line, name) do
+    next = header_value(line, {[], name}) |> String.trim_leading
+    "#{prev} #{next}"
   end
 
   defp merge_headers(prev, new) when is_list(prev) do
@@ -261,7 +266,7 @@ defmodule Athel.Nntp.Parser do
   end
   # termination
   defp header_param_name(<<"=", rest :: binary>>, acc) do
-    {acc |> IO.iodata_to_binary, rest}
+    {acc |> IO.iodata_to_binary |> String.upcase, rest}
   end
   # parse
   defp header_param_name(<<char, rest :: binary>>, acc) do

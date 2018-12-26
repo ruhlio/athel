@@ -47,9 +47,9 @@ defmodule Athel.Scraper do
     {:ok, overviews} = Nntp.Client.xover(session, 1)
     ids = extract_ids(overviews, state.message_id_index)
     id_set = MapSet.new ids
-    existing_ids = MapSet.new Repo.all(
+    existing_ids = Repo.all(
       from article in Article,
-      select: article.message_id)
+      select: article.message_id) |> MapSet.new
     new_ids = MapSet.difference(id_set, existing_ids)
     new_id_count = MapSet.size(new_ids)
     if new_id_count > 0 do

@@ -42,7 +42,8 @@ defmodule Athel.Mixfile do
       {:cloak, "~> 0.7.0"},
       {:ex_multihash, github: "ruhlio/ex_multihash"},
       {:emagic, github: "JasonZhu/erlang_magic"},
-      {:credo, "~> 0.10", only: [:dev, :test], runtime: false}
+      {:credo, "~> 1.0.0", only: [:dev, :test], runtime: false},
+      {:codepagex, "~> 0.1.4"}
     ]
   end
 

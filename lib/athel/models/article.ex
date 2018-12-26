@@ -34,11 +34,12 @@ defmodule Athel.Article do
 
   def changeset(article, params \\ %{}) do
     article
-    |> cast(params, [:message_id, :from, :subject, :body, :status])
+    |> cast(params, [:message_id, :from, :subject, :status])
     |> cast_assoc(:groups)
     |> cast_date(params)
     |> parse_message_id
     |> cast_content_type(params)
+    |> cast_body(params)
     |> cast_assoc(:parent, required: false)
     |> validate_required([:subject, :date, :content_type, :body])
     |> validate_inclusion(:status, ["active", "banned"])
@@ -87,11 +88,36 @@ defmodule Athel.Article do
     parse_value(changeset, :content_type, fn _ ->
       case content_type do
         nil -> {:ok, "text/plain"}
-        #TODO: handle charset param
         {type, _} -> {:ok, type}
         type -> {:ok, type}
       end
     end)
+  end
+
+  defp cast_body(changeset, params) do
+    body = params[:body]
+    new_body =
+      case params[:content_type] do
+        {_, %{"CHARSET" => charset}} ->
+          case map_encoding(charset) do
+            nil -> body
+            encoding -> Enum.map(body, &(Codepagex.to_string!(&1, encoding)))
+          end
+        _ -> body
+      end
+
+    new_changes = Map.put(changeset.changes, :body, new_body)
+    %{changeset | changes: new_changes}
+  catch
+    e -> Ecto.Changeset.add_error(changeset, :body, Exception.message(e))
+  end
+
+  defp map_encoding(encoding) do
+    encoding = String.upcase(encoding)
+    case Regex.run(~r/^ISO-8859-(\d)$/, encoding) do
+      [_, subtype] -> "ISO8859/8859-#{subtype}"
+      nil -> nil
+    end
   end
 
   defp parse_value(changeset = %{changes: changes, errors: errors}, key, parser) do

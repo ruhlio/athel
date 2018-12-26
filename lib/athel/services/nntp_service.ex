@@ -141,10 +141,10 @@ defmodule Athel.NntpService do
         #TODO: move this to the base changeset? or the group changeset?
         Changeset.add_error(changeset, :groups, "doesn't allow posting")
       true ->
-        upped_groups = groups
-        |> Enum.map(fn group ->
-          Group.changeset(group, %{high_watermark: group.high_watermark + 1})
-        end)
+        upped_groups =
+          Enum.map(groups, fn group ->
+            Group.changeset(group, %{high_watermark: group.high_watermark + 1})
+          end)
         Changeset.put_assoc(changeset, :groups, upped_groups)
     end
   end
@@ -171,11 +171,11 @@ defmodule Athel.NntpService do
         "limited to #{max_attachment_count}")
     else
       # mapping attachments by hash eliminates duplicate uploads
-      hashed_attachments = attachments
-      |> Enum.reduce(%{}, fn attachment, acc ->
-        {:ok, hash} = Attachment.hash_content(attachment.content)
-        Map.put(acc, hash, attachment)
-      end)
+      hashed_attachments =
+        Enum.reduce(attachments, %{}, fn attachment, acc ->
+          {:ok, hash} = Attachment.hash_content(attachment.content)
+          Map.put(acc, hash, attachment)
+        end)
 
       attachments = hashed_attachments |> Enum.map(fn {hash, attachment} ->
         existing_attachment = (from a in Attachment,
@@ -205,7 +205,6 @@ defmodule Athel.NntpService do
   end
 
   defp split_attachments([]), do: {[], []}
-
   defp split_attachments(attachments) do
     [first | rest] = attachments
     if is_nil(first.filename) do
@@ -217,7 +216,6 @@ defmodule Athel.NntpService do
   end
 
   defp split_body(body) when is_list(body), do: body
-
   defp split_body(body) do
     body |> String.split(~r/(\r\n)|\n|\r/)
   end
@@ -229,7 +227,6 @@ defmodule Athel.NntpService do
   end
 
   defp join_body(body) when is_list(body), do: Enum.join(body, "\n")
-
   defp join_body(body), do: body
 
   @spec new_topic(list(Group.t), changeset_params) :: new_article_result
