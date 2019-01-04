@@ -7,14 +7,14 @@
         <meta name="description" content="">
         <meta name="author" content="">
 
-        <title>Athel</title>
+        <title><%= @view_module.title(@view_template, assigns) %></title>
         <link rel="stylesheet" href="<%= static_path(@conn, "/css/app.css") %>">
     </head>
 
     <body>
         <header>
             <ul class="navigation">
-                <li><a href="/">Athel</a></li>
+                <li><a href="/">Home</a></li>
                 <li><a href="<%= group_path(@conn, :index) %>">Groups</a></li>
                 <li><a href="#">About</a></li>
             </ul>

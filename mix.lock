@@ -2,7 +2,7 @@
   "bunt": {:hex, :bunt, "0.2.0", "951c6e801e8b1d2cbe58ebbd3e616a869061ddadcc4863d0a2182541acae9a38", [:mix], [], "hexpm"},
   "certifi": {:hex, :certifi, "2.3.1", "d0f424232390bf47d82da8478022301c561cf6445b5b5fb6a84d49a9e76d2639", [:rebar3], [{:parse_trans, "3.2.0", [hex: :parse_trans, repo: "hexpm", optional: false]}], "hexpm"},
   "cloak": {:hex, :cloak, "0.7.0", "3257357acd51e55eb08d00a41ca3e2ab2c83b8d6561633b1cee7262c5f6be527", [:mix], [{:ecto, ">= 1.0.0", [hex: :ecto, repo: "hexpm", optional: false]}, {:flow, "~> 0.13", [hex: :flow, repo: "hexpm", optional: false]}, {:pbkdf2, "~> 2.0", [hex: :pbkdf2, repo: "hexpm", optional: true]}, {:poison, ">= 1.5.0", [hex: :poison, repo: "hexpm", optional: true]}], "hexpm"},
-  "codepagex": {:hex, :codepagex, "0.1.4", "dae3bc57e9334c324914b32ed61c0a30929fac3e73dc71fc611ed7eeb2dcb867", [], [], "hexpm"},
+  "codepagex": {:hex, :codepagex, "0.1.4", "dae3bc57e9334c324914b32ed61c0a30929fac3e73dc71fc611ed7eeb2dcb867", [:mix], [], "hexpm"},
   "combine": {:hex, :combine, "0.10.0", "eff8224eeb56498a2af13011d142c5e7997a80c8f5b97c499f84c841032e429f", [:mix], [], "hexpm"},
   "connection": {:hex, :connection, "1.0.4", "a1cae72211f0eef17705aaededacac3eb30e6625b04a6117c1b2db6ace7d5976", [:mix], [], "hexpm"},
   "cowboy": {:hex, :cowboy, "1.1.2", "61ac29ea970389a88eca5a65601460162d370a70018afe6f949a29dca91f3bb0", [:rebar3], [{:cowlib, "~> 1.0.2", [hex: :cowlib, repo: "hexpm", optional: false]}, {:ranch, "~> 1.3.2", [hex: :ranch, repo: "hexpm", optional: false]}], "hexpm"},

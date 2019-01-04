@@ -1,6 +1,6 @@
 @import "_normalize";
 
-@primary-color: #444;
+@primary-color: #708090;
 @error-color: rgb(202, 60, 60);
 
 .flash {
@@ -47,8 +47,8 @@ input {
 // base styles
 
 a:link, a:visited, a:active {
-                       color: #777;
-                   }
+    color: #777;
+}
 a:hover {
     color: #444;
 }
@@ -75,8 +75,10 @@ header {
     .navigation li {
         display: inline;
         list-style-type: none;
-        font-size: 1.2em;
+        font-size: 1.1em;
         border-right: 1px dashed @primary-color;
+        border-bottom: 1px dashed @primary-color;
+        padding-bottom: 0.1em;
         margin-bottom: 0.5em;
 
         &:hover {
@@ -85,7 +87,7 @@ header {
 
         a {
             color: @primary-color;
-            text-decoration: none
+            text-decoration: none;
         }
 
         a:hover {
@@ -116,4 +118,35 @@ main {
     tr:nth-child(1) {
         background-color: #fff;
     }
+}
+
+.article {
+    border-bottom: 2px dashed @primary-color;
+    margin-bottom: 0.5em;
+}
+
+.article:last-child {
+    border-bottom: 0;
+    margin-bottom: 0;
+}
+
+.article .metadata {
+    font-weight: 600;
+}
+
+// taken from twilight-bright
+
+.quote-1 {
+    color: #6b82a7;
+    background-color: #f1f4f8;
+}
+
+.quote-2 {
+    color: #cf7900;
+    background-color: #fdf9f2;
+}
+
+.quote-3 {
+    color: #5f9411;
+    background-color: #eff8e9;
 }
