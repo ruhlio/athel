@@ -60,21 +60,23 @@ defmodule Athel.Scraper do
 
   defp extract_ids(overviews, message_id_index) do
     Enum.map(overviews, fn line ->
-      raw_id =
-        line
-        |> String.split("\t")
-        |> Enum.at(message_id_index)
+      raw_id = line
+      |> String.splitter("\t")
+      |> Enum.take(message_id_index + 1)
+      |> Enum.at(message_id_index)
       # remove surrounding angle brackets
       String.slice(raw_id, 1, String.length(raw_id) - 2)
     end)
   end
 
   defp fetch_id(session, id) do
-    IO.puts "Taking #{id}"
-    {:ok, {headers, body}} = Nntp.Client.get_article(session, id)
-    case NntpService.take_article(headers, body, true) do
-      {:error, changeset} -> Logger.error "Failed to take article #{id}: #{inspect changeset}"
-      _ -> Logger.info "Took article #{id}"
+    case Nntp.Client.get_article(session, id) do
+      {:ok, {headers, body}} ->
+        case NntpService.take_article(headers, body, true) do
+          {:error, changeset} -> Logger.error "Failed to take article #{id}: #{inspect changeset}"
+          _ -> Logger.info "Took article #{id}"
+        end
+      {:error, error} -> Logger.error "Failed to take article #{id}: #{inspect error}"
     end
   end
 end

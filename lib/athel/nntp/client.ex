@@ -89,6 +89,9 @@ defmodule Athel.Nntp.Client do
   defp is_error(_), do: false
 
   defp format_error(:ok), do: :ok
+  defp format_error({:ok, {code, message}, _}) when is_number(code) do
+    {:error, {code, message}}
+  end
   defp format_error(tup) when is_tuple(tup), do: tup
   defp format_error(other), do: {:error, other}
 
