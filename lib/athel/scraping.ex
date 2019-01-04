@@ -10,7 +10,7 @@ defmodule Athel.Scraping do
   def init(:ok) do
     foreigners = Athel.Repo.all(Athel.Foreigner)
     children = Enum.map foreigners, fn foreigner ->
-      worker(Athel.Scraper, [foreigner], restart: :temporary)
+      worker(Athel.Scraper, [foreigner])
     end
 
     Supervisor.init(children, strategy: :one_for_one)

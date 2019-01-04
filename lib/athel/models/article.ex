@@ -28,7 +28,8 @@ defmodule Athel.Article do
     timestamps()
   end
 
-  @message_id_format ~r/^<?([a-zA-Z0-9$.]{2,128}@[a-zA-Z0-9.-]{2,63})>?$/
+  # against spec: allows consecutive .
+  @message_id_format Regex.compile!("^<?([a-zA-Z0-9.!#$%&'*+-/=?_`{|}~^]{2,128}@[a-zA-Z0-9.-]{2,63})>?$")
   @date_format "%a, %d %b %Y %H:%M:%S %z"
   def date_format, do: @date_format
 
@@ -116,7 +117,11 @@ defmodule Athel.Article do
     encoding = String.upcase(encoding)
     case Regex.run(~r/^ISO-8859-(\d)$/, encoding) do
       [_, subtype] -> "ISO8859/8859-#{subtype}"
-      nil -> nil
+      nil ->
+        case Regex.run(~r/^WINDOWS-12(\d{2})$/, encoding) do
+          [_, digits] -> "VENDORS/MICSFT/WINDOWS/CP12#{digits}"
+          nil -> nil
+        end
     end
   end
 
