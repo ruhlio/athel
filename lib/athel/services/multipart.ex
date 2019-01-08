@@ -6,10 +6,11 @@ defmodule Athel.Multipart do
   def get_boundary(headers) do
     mime_version = headers["MIME-VERSION"]
     content_type = headers["CONTENT-TYPE"]
+
     case mime_version do
       "1.0" ->
         case content_type do
-          {"multipart/mixed", %{"boundary" => boundary}} ->
+          {"multipart/mixed", %{"BOUNDARY" => boundary}} ->
             {:ok, boundary}
           {type, _} ->
             if is_multipart(type) do
@@ -52,7 +53,6 @@ defmodule Athel.Multipart do
   defp get_type(headers) do
     case headers["CONTENT-TYPE"] do
       nil -> "text/plain"
-      #todo: handle charset param
       {type, _params} -> type
       type -> type
     end
@@ -62,7 +62,7 @@ defmodule Athel.Multipart do
     case headers["CONTENT-DISPOSITION"] do
       nil ->
         nil
-      {type, %{"filename" => filename}} when type in ["attachment", "form-data"] ->
+      {type, %{"FILENAME" => filename}} when type in ["attachment", "form-data"] ->
         filename
       {_, _} ->
         throw :unhandled_content_disposition
@@ -176,7 +176,7 @@ defmodule Athel.Multipart do
     |> Enum.reduce(%{}, fn raw_param, params ->
       # input already validated in parse_headers()
       [_, name, value] = Regex.run ~r/^\s*(\w+)="(.*)"/, raw_param
-      Map.put(params, name, value)
+      Map.put(params, String.upcase(name), value)
     end)
   end
 

@@ -13,12 +13,17 @@ defmodule Athel.Scraper do
   def init(foreigner) do
     {:ok, session} = Nntp.Client.connect(foreigner.hostname, foreigner.port)
     groups = find_groups(session)
-    message_id_index = find_message_id_index(session)
-    Nntp.Client.quit(session)
-    Logger.info "Found groups #{inspect groups} at #{foreigner.hostname}:#{foreigner.port}"
-    Process.send_after(self(), :run, 0)
+    if Enum.empty?(groups) do
+      Logger.warn "No common groups found at #{foreigner.hostname}:#{foreigner.port}"
+      :ignore
+    else
+      message_id_index = find_message_id_index(session)
+      Nntp.Client.quit(session)
+      Logger.info "Found common groups #{inspect groups} at #{foreigner.hostname}:#{foreigner.port}"
+      Process.send_after(self(), :run, 0)
 
-    {:ok, %{groups: groups, message_id_index: message_id_index, foreigner: foreigner}}
+      {:ok, %{groups: groups, message_id_index: message_id_index, foreigner: foreigner}}
+    end
   end
 
   defp find_groups(session) do
@@ -70,10 +75,12 @@ defmodule Athel.Scraper do
   end
 
   defp fetch_id(session, id) do
+    Logger.debug fn -> "Taking article #{id}" end
     case Nntp.Client.get_article(session, id) do
       {:ok, {headers, body}} ->
         case NntpService.take_article(headers, body, true) do
-          {:error, changeset} -> Logger.error "Failed to take article #{id}: #{inspect changeset}"
+          {:error, %Ecto.Changeset{:errors => errors}} -> Logger.error "Failed to take article #{id}: #{inspect errors}"
+          {:error, reason} -> Logger.error "Failed to parse article #{id}: #{inspect reason}"
           _ -> Logger.info "Took article #{id}"
         end
       {:error, error} -> Logger.error "Failed to take article #{id}: #{inspect error}"

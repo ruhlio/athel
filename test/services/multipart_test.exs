@@ -13,14 +13,14 @@ defmodule Athel.MultipartTest do
     headers = %{"MIME-VERSION" => "1.0", "CONTENT-TYPE" => nil}
 
     assert get_boundary(%{headers | "CONTENT-TYPE" =>
-                           {"multipart/parallel", %{"boundary" => "word"}}}) == error
+                           {"multipart/parallel", %{"BOUNDARY" => "word"}}}) == error
     assert get_boundary(%{headers | "CONTENT-TYPE" => "multipart/mixed"}) == {:error, :invalid_multipart_type}
 
     assert get_boundary(%{headers | "CONTENT-TYPE" =>
-                           {"multipart/mixed", %{"boundary" => "persnickety"}}}) == {:ok, "persnickety"}
+                           {"multipart/mixed", %{"BOUNDARY" => "persnickety"}}}) == {:ok, "persnickety"}
     assert get_boundary(headers) == {:ok, nil}
     assert get_boundary(%{headers | "CONTENT-TYPE" =>
-                           {"text/plain", %{"charset" => "utf8"}}}) == {:ok, nil}
+                           {"text/plain", %{"CHARSET" => "UTF8"}}}) == {:ok, nil}
     assert get_boundary(%{headers | "CONTENT-TYPE" => "text/plain"}) == {:ok, nil}
   end
 

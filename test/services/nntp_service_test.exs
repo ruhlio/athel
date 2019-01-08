@@ -102,7 +102,7 @@ defmodule Athel.NntpServiceTest do
     assert article.from == headers["FROM"]
     assert article.subject == headers["SUBJECT"]
     assert article.content_type == headers["CONTENT-TYPE"]
-    assert article.body == body
+    assert article.body == Enum.join(body, "\n")
     assert (article.groups |> Enum.map(&(&1.name))) == [group.name]
   end
 
@@ -120,9 +120,8 @@ defmodule Athel.NntpServiceTest do
     body = File.stream!("test/services/danish_body.txt") |> Enum.to_list
 
     {:ok, article} = post_article(headers, body)
-    assert article.body == [
-      " \"You have to photosynthesize\"                                Adam Sjøgren\n",
-      "                                                         asjo@koldfront.dk\n"]
+    assert article.body ==
+      " \"You have to photosynthesize\"                                Adam Sjøgren\n\n                                                         asjo@koldfront.dk\n"
   end
 
   test "post with attachments" do
@@ -135,7 +134,8 @@ defmodule Athel.NntpServiceTest do
         "MIME-VERSION" => "1.0",
         "CONTENT-TYPE" => {"multipart/mixed", %{"BOUNDARY" => "surfsup"}}}
     body =
-      ["--surfsup",
+      ["",
+       "--surfsup",
        "Content-Transfer-Encoding: base64",
        "Content-Disposition: attachment; filename=\"phatwave.jpg\"",
        "",
@@ -143,7 +143,7 @@ defmodule Athel.NntpServiceTest do
        "--surfsup--"]
     {:ok, article} = post_article(headers, body)
 
-    assert article.body == []
+    assert article.body == ""
     [attachment] = article.attachments
     assert attachment.filename == "phatwave.jpg"
     assert attachment.content == "NAUGHT"
@@ -178,7 +178,7 @@ defmodule Athel.NntpServiceTest do
     {:ok, single_attachment_article} = post_article(headers, single_attachment_body)
     {:ok, multi_attachment_article} = post_article(headers, multi_attachment_body)
 
-    assert single_attachment_article.body == ["Can't get my", "line endings", "consistent", "i quit"]
+    assert single_attachment_article.body == "Can't get my\nline endings\nconsistent\ni quit"
     assert multi_attachment_article.body == single_attachment_article.body
 
     assert single_attachment_article.attachments == []

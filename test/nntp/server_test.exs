@@ -226,15 +226,8 @@ defmodule Athel.Nntp.ServerTest do
 
   test "BODY", %{socket: socket} do
     setup_models(2)
-    body = Article
-    |> Repo.get("01@test.com")
-    |> Repo.preload(:groups)
-    |> Repo.preload(:attachments)
-    |> (fn group -> group.body end).()
-    |> Formattable.format
 
-    assert send_recv(socket, "BODY <01@test.com>\r\n") == "220 0 <01@test.com>\r\n#{body}"
-
+    assert send_recv(socket, "BODY <01@test.com>\r\n") == "220 0 <01@test.com>\r\nLET'S ROCK OUT FOR JESUS & AMERICA\r\n.\r\n"
     quit(socket)
   end
 
@@ -260,7 +253,7 @@ defmodule Athel.Nntp.ServerTest do
       groups: [group, other_group],
       attachments: [],
       content_type: "text/plain",
-      body: ["YOU'RE ONE OF THEM"]
+      body: "YOU'RE ONE OF THEM"
     }
 
     assert send_recv(socket, "POST\r\n") =~ status(440)
@@ -332,7 +325,7 @@ defmodule Athel.Nntp.ServerTest do
       parent_message_id: nil,
       attachments: [],
       content_type: "text/plain",
-      body: ["I cannot fathom why"]
+      body: "I cannot fathom why"
     }
 
     assert send_recv(socket, "IHAVE <123@abc.cdf>\r\n") =~ status(483)

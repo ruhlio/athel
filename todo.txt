@@ -2,3 +2,4 @@ ban/delete by post/poster
 increment group watermarks
 configure logging to file
 implement moderated posting status
+add remote info to server/client logging

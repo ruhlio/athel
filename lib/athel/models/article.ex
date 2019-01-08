@@ -10,7 +10,7 @@ defmodule Athel.Article do
     field :subject, :string
     field :date, Timex.Ecto.DateTime
     field :content_type, :string
-    field :body, {:array, :string}
+    field :body, :string
 
     field :status, :string
 
@@ -42,8 +42,10 @@ defmodule Athel.Article do
     |> cast_content_type(params)
     |> cast_body(params)
     |> cast_assoc(:parent, required: false)
-    |> validate_required([:subject, :date, :content_type, :body])
+    |> validate_required([:subject, :date, :content_type])
     |> validate_inclusion(:status, ["active", "banned"])
+    |> validate_length(:from, max: 255)
+    |> validate_length(:subject, max: 255)
   end
 
   def get_headers(article) do
@@ -95,6 +97,10 @@ defmodule Athel.Article do
     end)
   end
 
+  defp cast_body(changeset, params = %{:body => body}) when is_list(body) do
+    joined_body = Enum.join(body, "\n")
+    cast_body(changeset, %{params | body: joined_body})
+  end
   defp cast_body(changeset, params) do
     body = params[:body]
     new_body =
@@ -102,7 +108,8 @@ defmodule Athel.Article do
         {_, %{"CHARSET" => charset}} ->
           case map_encoding(charset) do
             nil -> body
-            encoding -> Enum.map(body, &(Codepagex.to_string!(&1, encoding)))
+            encoding ->
+              Codepagex.to_string!(body, encoding)
           end
         _ -> body
       end
@@ -115,7 +122,7 @@ defmodule Athel.Article do
 
   defp map_encoding(encoding) do
     encoding = String.upcase(encoding)
-    case Regex.run(~r/^ISO-8859-(\d)$/, encoding) do
+    case Regex.run(~r/^ISO-8859-(\d+)$/, encoding) do
       [_, subtype] -> "ISO8859/8859-#{subtype}"
       nil ->
         case Regex.run(~r/^WINDOWS-12(\d{2})$/, encoding) do
@@ -167,15 +174,16 @@ defimpl Athel.Nntp.Formattable, for: Athel.Article do
 
   def format(article) do
     {headers, boundary} = Athel.Article.get_headers(article)
+    split_body = String.split(article.body, "\n")
     body = if is_nil(boundary) do
-      Formattable.format(article.body)
+      Formattable.format(split_body)
     else
       attachments = article.attachments |> Enum.map(fn attachment ->
         ["\r\n--", boundary, Formattable.format(attachment)]
       end)
       #NOTE: article lines won't be escaped (nested list won't pattern match),
       # which is ok since attachment content is always base64'd
-      Formattable.format(article.body ++ [attachments, "--#{boundary}--"])
+      Formattable.format(split_body ++ [attachments, "--#{boundary}--"])
     end
     [Formattable.format(headers), body]
   end

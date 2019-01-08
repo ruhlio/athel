@@ -3,7 +3,7 @@ defmodule Athel.ArticleTest do
 
   alias Athel.Article
 
-  @valid_attrs %{message_id: "123@banana", body: ["some content"], content_type: "some content", date: Timex.now(), from: "some content", parent: nil, subject: "some content", status: "active"}
+  @valid_attrs %{message_id: "123@banana", body: "some content", content_type: "some content", date: Timex.now(), from: "some content", parent: nil, subject: "some content", status: "active"}
   @invalid_attrs %{}
 
   test "changeset with valid attributes" do
@@ -55,6 +55,12 @@ defmodule Athel.ArticleTest do
 
   test "status" do
     assert_invalid(%Article{}, :status, "decimated", "is invalid")
+  end
+
+  test "joins list bodies" do
+    changeset = Article.changeset(%Article{}, %{@valid_attrs | body: ["multiline", "fantasy"]})
+    assert changeset.valid?
+    assert changeset.changes[:body] == "multiline\nfantasy"
   end
 
 end

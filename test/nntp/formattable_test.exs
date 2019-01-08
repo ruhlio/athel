@@ -78,6 +78,6 @@ defmodule Athel.Nntp.FormatTest do
              content_type: "text/plain",
              groups: groups,
              attachments: [],
-             body: ["how was your day?", "you're too kind to ask"]}
+             body: "how was your day?\nyou're too kind to ask"}
   end
 end

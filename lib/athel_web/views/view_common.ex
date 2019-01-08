@@ -1,6 +1,5 @@
 defmodule AthelWeb.ViewCommon do
   use Timex
-  import Phoenix.HTML
   import Phoenix.HTML.Tag
 
   def format_date(date) do
@@ -17,6 +16,7 @@ defmodule AthelWeb.ViewCommon do
 
   def format_article_body(body) do
     paragraphs = body
+    |> String.split("\n")
     |> Enum.chunk_by(&(&1 == ""))
     |> Enum.filter(&(&1 != [""]))
 

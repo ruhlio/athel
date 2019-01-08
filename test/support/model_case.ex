@@ -83,7 +83,7 @@ defmodule Athel.ModelCase do
               date: Timex.now(),
               parent_message_id: nil,
               content_type: "text/plain",
-              body: ["LET'S ROCK OUT FOR JESUS & AMERICA"],
+              body: "LET'S ROCK OUT FOR JESUS & AMERICA",
               status: "active"})
               |> Changeset.put_assoc(:groups, [group])
         changeset |> Athel.Repo.insert!() |> Repo.preload(:attachments)

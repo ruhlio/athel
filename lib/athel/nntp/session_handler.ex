@@ -116,8 +116,9 @@ defmodule Athel.Nntp.SessionHandler do
   defp xover_response(articles, group) when is_list(articles) do
     metadata = Enum.map(articles, fn {index, article} ->
       date = Timex.format!(article.date, @date_format, :strftime)
-      size = Enum.reduce(article.body, 0, fn line, sum -> sum + String.length(line) end)
-      "#{index}\t#{article.subject}\t#{article.from}\t#{date}\t#{article.message_id}\t#{article.parent_message_id}\t#{size}\t#{Enum.count(article.body)}"
+      size = String.length(article.body)
+      line_count = length(Regex.scan(~r/\n/, article.body)) + 1
+      "#{index}\t#{article.subject}\t#{article.from}\t#{date}\t#{article.message_id}\t#{article.parent_message_id}\t#{size}\t#{line_count}"
     end)
     {:continue, {224, "XOVER OVER", metadata}}
   end
@@ -207,7 +208,7 @@ defmodule Athel.Nntp.SessionHandler do
   end
 
   command "BODY", :get_article_body, max_args: 1
-  def get_article_body(args, state), do: retrieve(&(&1.body), args, state)
+  def get_article_body(args, state), do: retrieve(&(&1.body |> String.split("\n")), args, state)
 
   command "STAT", :get_article_stat, max_args: 1
   def get_article_stat(args, state), do: retrieve(nil, args, state)
@@ -252,7 +253,7 @@ defmodule Athel.Nntp.SessionHandler do
             end
         end
       true ->
-        {:error, {501, "d message id/index"}}
+        {:error, {501, "Invalid message id/index"}}
     end
   end
 
