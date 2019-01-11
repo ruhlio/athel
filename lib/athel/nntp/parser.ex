@@ -53,6 +53,7 @@ defmodule Athel.Nntp.Parser do
     {acc |> IO.iodata_to_binary |> String.to_integer, rest}
   end
   defp end_code(_in, _acc) do
+    Process.exit(self(), {_in, _acc |> IO.iodata_to_binary})
     syntax_error(:code)
   end
 
@@ -232,17 +233,17 @@ defmodule Athel.Nntp.Parser do
     header_name(rest, [acc, next])
   end
 
-  @param_headers ["CONTENT-TYPE"]
+  @param_headers ["CONTENT-TYPE", "CONTENT-DISPOSITION"]
 
   # header_value state is {current_value, header_name}
   # termination
   defp header_value("", {acc, _}) do
-    acc |> IO.iodata_to_binary
+    acc |> IO.iodata_to_binary |> String.trim
   end
   # start of params
   defp header_value(<<";", rest :: binary>>, {acc, header_name}) when header_name in @param_headers do
     params = header_params(rest, %{})
-    {acc |> IO.iodata_to_binary, params}
+    {acc |> IO.iodata_to_binary |> String.trim, params}
   end
   # parse
   defp header_value(<<char, rest :: binary>>, {acc, header_name}) do

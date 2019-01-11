@@ -191,16 +191,10 @@ defmodule Athel.NntpService do
   end
 
   defp read_body(headers, body) do
-    case Multipart.get_boundary(headers) do
-      {:ok, nil} ->
-        {:ok, {body, []}}
-      {:ok, boundary} ->
-        case Multipart.read_attachments(body, boundary) do
-          {:ok, attachments} -> {:ok, split_attachments(attachments)}
-          error -> error
-        end
-      error ->
-        error
+    case Multipart.read_attachments(headers, body) do
+      {:ok, nil} -> {:ok, {body, []}}
+      {:ok, attachments} -> {:ok, split_attachments(attachments)}
+      error -> error
     end
   end
 

@@ -80,7 +80,11 @@ defmodule Athel.Scraper do
       {:ok, {headers, body}} ->
         case NntpService.take_article(headers, body, true) do
           {:error, %Ecto.Changeset{:errors => errors}} -> Logger.error "Failed to take article #{id}: #{inspect errors}"
-          {:error, reason} -> Logger.error "Failed to parse article #{id}: #{inspect reason}"
+          {:error, reason} ->
+            # Failed parse, can't recover
+            Logger.error "Failed to parse article #{id}: #{inspect reason}"
+            Nntp.Client.quit(session)
+            throw {:stop, :bad_parse}
           _ -> Logger.info "Took article #{id}"
         end
       {:error, error} -> Logger.error "Failed to take article #{id}: #{inspect error}"
