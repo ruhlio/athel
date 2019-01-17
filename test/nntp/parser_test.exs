@@ -152,8 +152,7 @@ Original-Received: from hawk.netfonds.no ([80.91.224.246])\r
   end
 
   test "header with params split across lines" do
-    result = parse_headers("Content-Type: multipart/signed; boundary=\"=-=-=\";\r
-	  micalg=pgp-sha1; protocol=\"application/pgp-signature\"\r\n\r\n")
+    result = parse_headers("Content-Type: multipart/signed; boundary=\"=-=-=\";\r\n\tmicalg=pgp-sha1; protocol=\"application/pgp-signature\"\r\n\r\n")
     assert result == {:ok,
                       %{"CONTENT-TYPE" => {"multipart/signed",
                                            %{"BOUNDARY" => "=-=-=",
@@ -162,13 +161,38 @@ Original-Received: from hawk.netfonds.no ([80.91.224.246])\r
                       ""}
   end
 
+  test "header with trailing spaces before params, and params starting on next line on next read" do
+    {:need_more, state} = parse_headers("Content-Type: multipart/alternative; \r\n")
+    {:ok, _, _} = parse_headers(
+      "\tboundary=\"----=_Part_5262_18691742.1203610743730\"\r\n\r\n", state)
+  end
+
+  test "header with param names split across lines & reads" do
+    {:need_more, state} = parse_headers("Content-Type: multipart/alternative; chars\r\n")
+    {:need_more, next_state} = parse_headers("\tet=utf8; LESS=chess; \r\n", state)
+    {:ok, headers, _} = parse_headers("\tmore=params\r\n\r\n", next_state)
+    assert headers == %{"CONTENT-TYPE" => {"multipart/alternative",
+                                           %{"CHARSET" => "utf8",
+                                             "LESS" => "chess",
+                                             "MORE" => "params"}}}
+  end
+
+  #TODO
+  # test "header with param values split across lines" do
+  #   {:ok, headers, _} = parse_headers("Content-Type: multipart/alternative; charset=\"utf\r\n\t8\"; LES\r\n\tS=\"ches\r\n\ts\"\r\n\r\n")
+  #   assert headers == %{"CONTENT-TYPE" => {"multipart/alternative",
+  #                                         %{"CHARSET" => "utf8",
+  #                                           "LESS" => "chess"}}}
+  # end
+
   test "unterminated header entry parameters" do
     {:need_more, _} = parse_headers("Content-Type: attachment; boundary")
     {:need_more, _} = parse_headers("Content-Type: attachment; boundary=nope;")
   end
 
   test "prematurely terminated header param" do
-    assert parse_headers("Content-Type: attachment; boundary\r\n") == {:error, :header_param_name}
+    # could complete on next line
+    {:need_more, _} = parse_headers("Content-Type: attachment; boundary\r\n")
   end
 
   test "header name with whitespace" do
@@ -176,8 +200,8 @@ Original-Received: from hawk.netfonds.no ([80.91.224.246])\r
   end
 
   test "unterminated headers" do
-    {:need_more, {[], headers, "THIS-TRAIN"}} = parse_headers("this-train: is off the tracks\r\n")
-    assert headers == %{"THIS-TRAIN" => "is off the tracks"}
+    {:need_more, state} = parse_headers("this-train: is off the tracks\r\n")
+    assert state.headers == %{"THIS-TRAIN" => "is off the tracks"}
   end
 
   test "newline terminated header name" do

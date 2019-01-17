@@ -198,14 +198,24 @@ defmodule Athel.NntpServiceTest do
         "CONTENT-TYPE" => {"multipart/mixed", %{"BOUNDARY" => "surfsup"}}}
     body =
       ["--surfsup",
+       "Content-Type: text/plain",
+       "",
        "body",
        "--surfsup",
+       "Content-Type: text/plain",
+       "",
        "one",
        "--surfsup",
+       "Content-Type: text/plain",
+       "",
        "two",
        "--surfsup",
+       "Content-Type: text/plain",
+       "",
        "three",
        "--surfsup",
+       "Content-Type: text/plain",
+       "",
        "four",
        "--surfsup--"]
 

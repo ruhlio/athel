@@ -36,13 +36,13 @@ defmodule Athel.Multipart do
         process.(boundary)
       {type, _} ->
         if is_multipart(type) do
-          throw :unhandled_multipart_type
+          fail(:unhandled_multipart_type)
         else
           {:ok, nil}
         end
       type ->
         if is_multipart(type) do
-          throw :invalid_multipart_type
+          fail(:invalid_multipart_type)
         else
           {:ok, nil}
         end
@@ -69,7 +69,7 @@ defmodule Athel.Multipart do
       attachments: []}
   end
   defp cast_attachment({%{"CONTENT-TYPE" => {"multipart/signed", _}}, _, _}) do
-    throw :invalid_multipart_signed_type
+    fail(:invalid_multipart_signed_type)
   end
   defp cast_attachment({headers, body, attachments}) do
     %{type: get_type(headers),
@@ -94,7 +94,7 @@ defmodule Athel.Multipart do
       {type, %{"FILENAME" => filename}} when type in ["attachment", "form-data"] ->
         filename
       {_, _} ->
-        throw :unhandled_content_disposition
+        fail(:unhandled_content_disposition)
       _ ->
         nil
     end
@@ -109,30 +109,29 @@ defmodule Athel.Multipart do
       ignore when ignore in ["7BIT", "8BIT", "BINARY", "QUOTED-PRINTABLE"] ->
         body
       "BASE64" ->
-        case body do
-          [body] ->
-            case Base.decode64(body) do
-              {:ok, body} -> body
-              :error -> throw :invalid_encoding
-            end
-          _ -> throw :invalid_encoding
+        deserialized = body
+        |> Enum.join("")
+        |> Base.decode64(body)
+        case deserialized do
+          {:ok, body} -> body
+          :error -> fail(:invalid_transfer_encoding)
         end
       _ ->
-        throw :unhandled_encoding
+        fail(:unhandled_transfer_encoding)
     end
   end
 
   defp strip_signature(["-----BEGIN PGP SIGNATURE-----" | rest]) do
     strip_signature(rest, [])
   end
-  defp strip_signature(_), do: throw :invalid_signature
+  defp strip_signature(_), do: fail(:invalid_signature)
   defp strip_signature(["-----END PGP SIGNATURE-----" | _], acc) do
     Enum.reverse(acc)
   end
   defp strip_signature([next | rest], acc) do
     strip_signature(rest, [next | acc])
   end
-  defp strip_signature(_, _), do: throw :invalid_signature
+  defp strip_signature(_, _), do: throw fail(:invalid_signature)
 
   ### Parsing
 
@@ -156,7 +155,7 @@ defmodule Athel.Multipart do
   end
 
   defp parse_body([], _, _, _) do
-    throw :unterminated_body
+    fail(:unterminated_body)
   end
   defp parse_body([line | rest], terminator, _, acc) when line == terminator do
     {:terminate, Enum.reverse(acc), rest}
@@ -169,7 +168,7 @@ defmodule Athel.Multipart do
   end
 
   defp parse_attachments([], _, _, _) do
-    throw :unterminated_body
+    fail(:unterminated_body)
   end
   defp parse_attachments(lines, terminator, next_sigil, attachments) do
     case parse_attachment(lines, terminator, next_sigil) do
@@ -181,13 +180,7 @@ defmodule Athel.Multipart do
   end
 
   defp parse_attachment(lines, terminator, next_sigil) do
-    {headers, rest} =
-      # join/split is a bit regressive, but allows reuse of Parser
-      case lines |> Enum.join("\r\n") |> Parser.parse_headers() do
-        {:ok, headers, rest} -> {headers, rest |> String.split("\r\n")}
-        {:error, reason} -> throw reason
-        {:need_more, _} -> throw :unterminated_headers
-      end
+    {headers, rest} = read_headers(lines)
 
     case parse_nested(headers, rest) do
       {:ok, nil} ->
@@ -199,9 +192,29 @@ defmodule Athel.Multipart do
         end
       {attachments, rest} ->
         # eat deadspace until beginning of next attachment
-        {_deadspace, [_sigil | rest]} = Enum.split_while(rest, &(&1 != next_sigil))
-        {:continue, {headers, [], attachments}, rest}
+        case Enum.split_while(rest, &(&1 != next_sigil)) do
+          {_deadspace, []} ->
+            {:terminate, {headers, [], attachments}, []}
+          {_deadspace, [_sigil]} ->
+            throw :unterminated_body
+          {_deadspace, [_sigil | rest]} ->
+            {:continue, {headers, [], attachments}, rest}
+        end
     end
+  end
+
+  defp read_headers(lines, state \\ nil)
+  defp read_headers([line | lines], state) do
+    case Parser.parse_headers("#{line}\r\n", state) do
+      {:ok, headers, _} -> {headers, lines}
+      {:error, reason} -> fail(reason)
+      {:need_more, state} -> read_headers(lines, state)
+    end
+  end
+  defp read_headers([], _), do: fail(:unterminated_headers)
+
+  defp fail(reason) do
+    throw reason
   end
 
 end

@@ -116,12 +116,22 @@ defmodule Athel.MultipartTest do
                          attachments: []}
   end
 
-  test "signed attachment with no following signatures" do
-    
+  test "signed attachment with no following attachments" do
+    body = signed_attachment()
+    |> String.split("--lapalabra\nContent-Type: text/plain; charset=\"us-ascii\"")
+    |> List.first
+    |> String.split("\n")
+
+    {:ok, [post]} = read_attachments(@headers, body)
+    assert post.type == "multipart/signed"
   end
 
   test "signed attachment with invalid signature" do
-    
+    body = signed_attachment()
+    |> String.replace("-----BEGIN PGP SIGNATURE-----", "COMMENCE EMBEZZLING")
+    |> String.split("\n")
+
+    assert {:error, :invalid_signature} = read_attachments(@headers, body)
   end
 
   test "calls for help after the terminator are ignored" do
@@ -211,7 +221,7 @@ defmodule Athel.MultipartTest do
       ["--lapalabra",
        "Content-Transfer-Encoding: base58",
        "",
-       "--lapalabra--"]) == {:error, :unhandled_encoding}
+       "--lapalabra--"]) == {:error, :unhandled_transfer_encoding}
   end
 
   test "invalid encoding" do
@@ -221,14 +231,14 @@ defmodule Athel.MultipartTest do
        "",
        "can't b64",
        "two lines",
-       "--lapalabra--"]) == {:error, :invalid_encoding}
+       "--lapalabra--"]) == {:error, :invalid_transfer_encoding}
 
     assert read_attachments(@headers,
       ["--lapalabra",
        "Content-Transfer-Encoding: base64",
        "",
        "whoopsy",
-       "--lapalabra--"]) == {:error, :invalid_encoding}
+       "--lapalabra--"]) == {:error, :invalid_transfer_encoding}
   end
 
   test "unhandled content disposition" do

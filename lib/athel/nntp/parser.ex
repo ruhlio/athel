@@ -53,11 +53,10 @@ defmodule Athel.Nntp.Parser do
     {acc |> IO.iodata_to_binary |> String.to_integer, rest}
   end
   defp end_code(_in, _acc) do
-    Process.exit(self(), {_in, _acc |> IO.iodata_to_binary})
     syntax_error(:code)
   end
 
-  @whitespace '\s\t'
+  @whitespace ' \t'
 
   defp skip_whitespace(<<char :: utf8, rest :: binary>>) when char in @whitespace do
     rest
@@ -158,59 +157,72 @@ defmodule Athel.Nntp.Parser do
     end
   end
 
-  # headers state is {current_line, headers, previous_header}
-  # previous header is for handling multiline headers
+  # previous is for handling multiline headers
   # :need_more is only handled at the top level (via reading in a whole line at a time) for simplicity
   # initialize
   defp headers(input, nil) do
-    headers(input, {[], %{}, nil})
+    headers(input, %{
+          line_acc: [],
+          headers: %{},
+          header_name: nil,
+          param_name_acc: []})
   end
   defp headers("", state) do
     need_more(state)
   end
   # parse
-  defp headers(input, {line_acc, acc, prev_header}) do
+  defp headers(input, state) do
     {line, rest} =
       try do
-        line(input, line_acc)
+        line(input, state.line_acc)
       catch
-        {:need_more, next_line_acc} -> need_more({next_line_acc, acc, prev_header})
+        {:need_more, next_line_acc} -> need_more(%{state | line_acc: next_line_acc})
       end
 
     cond do
       # empty line signifies end of headers
-      "" == line -> {acc, rest}
-      # multiline header. Just slap onto previous header's value with a space
+      "" == line -> {state.headers, rest}
+      # multiline header
       line =~ ~r/^\s+/ ->
-          case prev_header do
+          case state.header_name do
             nil -> syntax_error(:multiline_header)
-            _ ->
-              new_acc = Map.update(acc, prev_header, "",
-                &merge_header_lines(&1, line, prev_header))
-              headers(rest, {[], new_acc, prev_header})
+            header_name ->
+              # resuming header value parse
+              new_headers = Map.update(state.headers, header_name, "",
+                &merge_header_lines(&1, line, state))
+              headers(rest, %{state | line_acc: [], headers: new_headers})
           end
       true ->
           {name, rest_value} = header_name(line, [])
-          value = header_value(skip_whitespace(rest_value), {[], name})
-          new_acc = Map.update(acc, name, value, &merge_headers(&1, value))
-          headers(rest, {[], new_acc, name})
+          named_state = %{state | header_name: name, param_name_acc: []}
+          value = header_value(skip_whitespace(rest_value), [], named_state)
+          new_headers = Map.update(state.headers, name, value, &merge_headers(&1, value))
+
+          headers(rest, %{named_state | line_acc: [], headers: new_headers})
     end
   end
 
   # values are inserted backwards while merging
-  # currently doesn't handle headers with params
 
-  defp merge_header_lines(prev, line, name) when is_list(prev) do
+  defp merge_header_lines(prev, line, state) when is_list(prev) do
     [last | rest] = prev
-    [merge_header_lines(last, line, name) | rest]
+    [merge_header_lines(last, line, state) | rest]
   end
-  defp merge_header_lines({value, params}, line, _) do
-    next_params = header_params(line, params)
+  defp merge_header_lines({value, params}, line, state) do
+    next_params = header_params(line, params, state)
     {value, next_params}
+  catch
+    {:need_more, {new_params, param_name_acc}} ->
+      handle_incomplete_params_parse(state, value, Map.merge(params, new_params), param_name_acc)
   end
-  defp merge_header_lines(prev, line, name) do
-    next = header_value(line, {[], name}) |> String.trim_leading
+  defp merge_header_lines(prev, line, state) do
+    next = header_value(line, [], state)
     "#{prev} #{next}"
+  end
+
+  defp handle_incomplete_params_parse(state, header_value, params, param_name_acc) do
+    new_headers = Map.put(state.headers, state.header_name, {header_value, params})
+    need_more(%{state | headers: new_headers, param_name_acc: param_name_acc})
   end
 
   defp merge_headers(prev, new) when is_list(prev) do
@@ -235,35 +247,47 @@ defmodule Athel.Nntp.Parser do
 
   @param_headers ["CONTENT-TYPE", "CONTENT-DISPOSITION"]
 
-  # header_value state is {current_value, header_name}
   # termination
-  defp header_value("", {acc, _}) do
+  defp header_value("", acc, _), do: terminate_header_value(acc)
+  # start of params
+  defp header_value(<<";", rest :: binary>>, acc, state = %{header_name: header_name})
+  when header_name in @param_headers do
+    params = header_params(rest, %{}, state)
+    {terminate_header_value(acc), params}
+  catch
+    {:need_more, {params, param_name_acc}} ->
+      handle_incomplete_params_parse(state, terminate_header_value(acc), params, param_name_acc)
+  end
+  # parse
+  defp header_value(<<char, rest :: binary>>, acc, state) do
+    header_value(rest, [acc, char], state)
+  end
+
+  defp terminate_header_value(acc) do
     acc |> IO.iodata_to_binary |> String.trim
   end
-  # start of params
-  defp header_value(<<";", rest :: binary>>, {acc, header_name}) when header_name in @param_headers do
-    params = header_params(rest, %{})
-    {acc |> IO.iodata_to_binary |> String.trim, params}
-  end
-  # parse
-  defp header_value(<<char, rest :: binary>>, {acc, header_name}) do
-    header_value(rest, {[acc, char], header_name})
-  end
 
   # termination
-  defp header_params("", params), do: params
+  defp header_params("", params, _), do: params
   # parse
-  defp header_params(input, params) do
-    {param_name, rest} = header_param_name(input, [])
-    {param_value, rest} = header_param_value(rest, {[], false})
-    header_params(rest, params |> Map.put(param_name, param_value))
+  defp header_params(input, params, state) do
+    {param_name, value_input} = try do
+      header_param_name(input, state.param_name_acc)
+    catch
+      {:need_more, param_name_acc} -> need_more({params, param_name_acc})
+    end
+    {param_value, next_param_input} = header_param_value(value_input, {[], false})
+    cleared_state = %{state | param_name_acc: []}
+    header_params(next_param_input, params |> Map.put(param_name, param_value), cleared_state)
   end
 
-  # never found "=" separator
-  defp header_param_name("", _), do: syntax_error(:header_param_name)
+  # haven't found "=" separator
+  defp header_param_name("", acc) do
+    need_more(acc)
+  end
   # eat leading whitespace
-  defp header_param_name(<<char, rest :: binary>>, []) when char in ' \t' do
-    header_param_name(rest, [])
+  defp header_param_name(<<char, rest :: binary>>, acc) when char in @whitespace do
+    header_param_name(rest, acc)
   end
   # termination
   defp header_param_name(<<"=", rest :: binary>>, acc) do
