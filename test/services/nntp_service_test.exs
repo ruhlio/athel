@@ -262,7 +262,7 @@ defmodule Athel.NntpServiceTest do
   test "take" do
     setup_models()
 
-    date = Timex.to_datetime({{2012, 7, 4}, {4, 51, 23}}, "Etc/GMT+6")
+    date = Timex.to_datetime({{2012, 7, 4}, {10, 51, 23}}, "Etc/UTC")
     headers = %{
       "MESSAGE-ID" => "<not@really.here>",
       "DATE" => "Tue, 04 Jul 2012 04:51:23 -0600",

@@ -75,15 +75,15 @@ defmodule Athel.NntpService do
     |> select([a, _at, i], {i.index, a})
     # subqueries with fragments in the `select` not supported, whole query must
     # be a fragment to be joined on
+    # see: https://github.com/elixir-ecto/ecto/issues/1416
     # make `row_number()` zero-indexed to match up with `offset`
-    #see: https://github.com/elixir-ecto/ecto/issues/1416
     |> join(:inner, [a], i in fragment("""
     SELECT (row_number() OVER (ORDER BY a.date) - 1) as index,
            a.message_id as message_id
     FROM articles a
     JOIN articles_to_groups a2g ON a2g.message_id = a.message_id
     JOIN groups g ON g.id = a2g.group_id AND g.name = ?
-    """, ^group.name), i.message_id == a.message_id)
+    """, ^group.name), on: i.message_id == a.message_id)
   end
 
   @spec post_article(headers, list(String.t)) :: new_article_result

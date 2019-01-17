@@ -8,7 +8,7 @@ defmodule Athel.Article do
   schema "articles" do
     field :from, :string
     field :subject, :string
-    field :date, Timex.Ecto.DateTime
+    field :date, :utc_datetime
     field :content_type, :string
     field :body, :string
 
@@ -75,15 +75,25 @@ defmodule Athel.Article do
     end)
   end
 
+
   defp cast_date(changeset, params) do
     date = params[:date]
     parse_value(changeset, :date, fn _ ->
-      if is_binary(date) do
-        Timex.parse(date, @date_format, Timex.Parse.DateTime.Tokenizers.Strftime)
-      else
-        {:ok, date}
+      cond do
+        is_binary(date) ->
+          with {:ok, parsed_date} <- Timex.parse(date, @date_format, Timex.Parse.DateTime.Tokenizers.Strftime), do: {:ok, parsed_date |> sanitize_date()}
+        nil == date ->
+          {:ok, nil}
+        true ->
+          {:ok, date |> Timex.to_datetime() |> sanitize_date()}
       end
     end)
+  end
+
+  defp sanitize_date(date) do
+    date
+    |> DateTime.truncate(:second)
+    |> Timex.Timezone.convert("Etc/UTC")
   end
 
   defp cast_content_type(changeset, params) do

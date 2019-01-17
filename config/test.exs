@@ -11,7 +11,6 @@ config :logger, level: :warn
 
 # Configure your database
 config :athel, Athel.Repo,
-  adapter: Ecto.Adapters.Postgres,
   username: "athel",
   password: "athel",
   database: "athel_test",

@@ -1,14 +1,18 @@
 defmodule AthelWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :athel
 
-  socket "/socket", AthelWeb.UserSocket
+  socket "/socket", AthelWeb.UserSocket,
+    websocket: true,
+    longpoll: false
 
   # Serve at "/" the static files from "priv/static" directory.
   #
   # You should set gzip to true if you are running phoenix.digest
   # when deploying your static files in production.
   plug Plug.Static,
-    at: "/", from: :athel, gzip: false,
+    at: "/",
+    from: :athel,
+    gzip: false,
     only: ~w(css fonts images js favicon.ico robots.txt)
 
   # Code reloading can be explicitly enabled under the
@@ -25,7 +29,7 @@ defmodule AthelWeb.Endpoint do
   plug Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],
     pass: ["*/*"],
-    json_decoder: Poison
+    json_decoder: Phoenix.json_library()
 
   plug Plug.MethodOverride
   plug Plug.Head

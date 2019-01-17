@@ -30,6 +30,7 @@ defmodule Athel.GroupTest do
 
     changeset = Group.changeset(%Group{}, @valid_attrs)
     {:error, changeset} = Repo.insert(changeset)
-    assert changeset.errors[:name] == {"has already been taken", []}
+    {message, _} = changeset.errors[:name]
+    assert message == "has already been taken"
   end
 end

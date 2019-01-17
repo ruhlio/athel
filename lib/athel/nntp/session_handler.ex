@@ -113,7 +113,7 @@ defmodule Athel.Nntp.SessionHandler do
     end
   end
 
-  defp xover_response(articles, group) when is_list(articles) do
+  defp xover_response(articles, _group) when is_list(articles) do
     metadata = Enum.map(articles, fn {index, article} ->
       date = Timex.format!(article.date, @date_format, :strftime)
       size = String.length(article.body)

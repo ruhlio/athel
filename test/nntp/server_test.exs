@@ -159,6 +159,8 @@ defmodule Athel.Nntp.ServerTest do
     multi_response = ~r/224 XOVER OVER\r\n0\tTalking to myself\tMe\t\d{14}\t00@test.com\t\t34\t1\r\n1\tTalking to myself\tMe\t\d{14}\t01@test.com\t\t34\t1/
     assert send_recv(socket, "XOVER 0-\r\n") =~ multi_response
     assert send_recv(socket, "XOVER 0-2\r\n") =~ multi_response
+
+    send_recv(socket, "QUIT\r\n")
   end
 
   test "LAST", %{socket: socket} do

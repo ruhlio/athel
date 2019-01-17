@@ -28,22 +28,23 @@ defmodule Athel.Mixfile do
   defp deps do
     [
       # added by phoenix
-      {:phoenix, "~> 1.3.0"},
-      {:phoenix_pubsub, "~> 1.0"},
-      {:phoenix_ecto, "~> 3.3.0"},
+      {:phoenix, "~> 1.4.0"},
+      {:phoenix_pubsub, "~> 1.1"},
+      {:phoenix_ecto, "~> 4.0.0"},
       {:postgrex, ">= 0.0.0"},
+      {:ecto_sql, "~> 3.0"},
       {:phoenix_html, "~> 2.12.0"},
-      {:phoenix_live_reload, "~> 1.0", only: :dev},
+      {:phoenix_live_reload, "~> 1.2", only: :dev},
       {:gettext, "~> 0.16.0"},
-      {:cowboy, "~> 1.0"},
-      # added by hand
-      {:timex, "~> 3.3"},
-      {:timex_ecto, "~> 3.3"},
-      {:cloak, "~> 0.7.0"},
+      {:plug_cowboy, "~> 2.0"},
+      {:jason, "~> 1.0.0"},
+      {:timex, "~> 3.4"},
+      {:cloak, "~> 0.9.0"},
       {:ex_multihash, github: "ruhlio/ex_multihash"},
       {:emagic, github: "JasonZhu/erlang_magic"},
       {:credo, "~> 1.0.0", only: [:dev, :test], runtime: false},
-      {:codepagex, "~> 0.1.4"}
+      {:codepagex, "~> 0.1.4"},
+      {:distillery, "~> 2.0.0"}
     ]
   end
 

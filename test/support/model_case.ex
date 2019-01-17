@@ -80,12 +80,15 @@ defmodule Athel.ModelCase do
               message_id: "0#{index}@test.com",
               from: "Me",
               subject: "Talking to myself",
-              date: Timex.now(),
+              # second precision causes times to all line up,
+              # ensure dates differ for ordering and that any articles created
+              # afterwards have later dates
+              date: Timex.now() |> DateTime.add(-(article_count * 2) + index),
               parent_message_id: nil,
               content_type: "text/plain",
               body: "LET'S ROCK OUT FOR JESUS & AMERICA",
               status: "active"})
-              |> Changeset.put_assoc(:groups, [group])
+          |> Changeset.put_assoc(:groups, [group])
         changeset |> Athel.Repo.insert!() |> Repo.preload(:attachments)
       end
     end

@@ -29,7 +29,7 @@ defmodule Athel.ArticleTest do
 
   test "string date" do
     changeset = Article.changeset(%Article{}, %{@valid_attrs | date: "Tue, 04 Jul 2012 04:51:23 -0500"})
-    assert changeset.changes[:date] == Timex.to_datetime({{2012, 7, 4}, {4, 51, 23}}, "Etc/GMT+5")
+    assert changeset.changes[:date] == Timex.to_datetime({{2012, 7, 4}, {9, 51, 23}}, "Etc/UTC")
   end
 
   test "message id uniqueness" do
