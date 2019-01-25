@@ -118,75 +118,80 @@ defmodule Athel.NntpService do
     with {:ok, {body, attachments}} <- read_body(headers, body) do
       changeset = %Article{}
       |> Article.changeset(Map.put(params, :body, body))
-      |> set_groups(headers)
-      |> set_parent(headers, allow_orphan)
-      |> set_attachments(attachments)
+      |> Changeset.prepare_changes(set_groups(headers))
+      |> Changeset.prepare_changes(set_parent(headers, allow_orphan))
+      |> Changeset.prepare_changes(set_attachments(attachments))
 
       Repo.insert(changeset)
     end
   end
 
-  defp set_groups(changeset, headers) do
+  defp set_groups(headers) do
     group_names = headers
     |> Map.get("NEWSGROUPS", "")
     |> String.split(",")
     |> Enum.map(&String.trim/1)
 
-    groups = Repo.all(from g in Group, where: g.name in ^group_names)
+    fn changeset ->
+      group_query = from g in Group, where: g.name in ^group_names
+      groups = changeset.repo.all(group_query)
 
-    cond do
-      Enum.empty?(groups) || length(group_names) != length(groups) ->
-        Changeset.add_error(changeset, :groups, "is invalid")
-      Enum.any?(groups, &(&1.status == "n")) ->
-        #TODO: move this to the base changeset? or the group changeset?
-        Changeset.add_error(changeset, :groups, "doesn't allow posting")
-      true ->
-        upped_groups =
-          Enum.map(groups, fn group ->
-            Group.changeset(group, %{high_watermark: group.high_watermark + 1})
-          end)
-        Changeset.put_assoc(changeset, :groups, upped_groups)
+      cond do
+        Enum.empty?(groups) || length(group_names) != length(groups) ->
+          Changeset.add_error(changeset, :groups, "is invalid")
+        Enum.any?(groups, &(&1.status == "n")) ->
+          #TODO: move this to the base changeset? or the group changeset?
+          Changeset.add_error(changeset, :groups, "doesn't allow posting")
+        true ->
+          changeset.repo.update_all(group_query, inc: [high_watermark: 1])
+          changeset
+      end
     end
   end
 
-  defp set_parent(changeset, headers, allow_orphan) do
+  defp set_parent(headers, allow_orphan) do
     parent_message_id = headers["REFERENCES"]
-    parent = unless allow_orphan || is_nil(parent_message_id) do
-      Repo.get(Article, parent_message_id)
-    end
 
-    if !allow_orphan && is_nil(parent) && !is_nil(parent_message_id) do
-      Changeset.add_error(changeset, :parent, "is invalid")
-    else
-      Changeset.put_assoc(changeset, :parent, parent)
+    fn changeset ->
+      parent = unless allow_orphan || is_nil(parent_message_id) do
+        changeset.repo.get(Article, parent_message_id)
+      end
+
+      if !allow_orphan && is_nil(parent) && !is_nil(parent_message_id) do
+        Changeset.add_error(changeset, :parent, "is invalid")
+      else
+        Changeset.put_assoc(changeset, :parent, parent)
+      end
     end
   end
 
-  defp set_attachments(changeset, attachments) do
+  defp set_attachments(attachments) do
     config = Application.fetch_env!(:athel, Athel.Nntp)
     max_attachment_count = config[:max_attachment_count]
 
-    if length(attachments) > max_attachment_count do
-      Changeset.add_error(changeset, :attachments,
-        "limited to #{max_attachment_count}")
-    else
-      # mapping attachments by hash eliminates duplicate uploads
-      hashed_attachments =
-        Enum.reduce(attachments, %{}, fn attachment, acc ->
-          {:ok, hash} = Attachment.hash_content(attachment.content)
-          Map.put(acc, hash, attachment)
-        end)
+    fn changeset ->
+      if length(attachments) > max_attachment_count do
+        Changeset.add_error(changeset, :attachments,
+          "limited to #{max_attachment_count}")
+      else
+        # mapping attachments by hash eliminates duplicate uploads
+        hashed_attachments =
+          Enum.reduce(attachments, %{}, fn attachment, acc ->
+            {:ok, hash} = Attachment.hash_content(attachment.content)
+            Map.put(acc, hash, attachment)
+          end)
 
-      attachments = hashed_attachments |> Enum.map(fn {hash, attachment} ->
-        existing_attachment = (from a in Attachment,
-          where: a.hash == ^hash) |> first |> Repo.one
-        if is_nil(existing_attachment) do
-          Attachment.changeset(%Attachment{}, attachment)
-        else
-          existing_attachment
-        end
-      end)
-      Changeset.put_assoc(changeset, :attachments, attachments)
+        attachments = hashed_attachments |> Enum.map(fn {hash, attachment} ->
+          existing_attachment = (from a in Attachment,
+            where: a.hash == ^hash) |> first |> changeset.repo.one
+          if is_nil(existing_attachment) do
+            Attachment.changeset(%Attachment{}, attachment)
+          else
+            existing_attachment
+          end
+        end)
+        Changeset.put_assoc(changeset, :attachments, attachments)
+      end
     end
   end
 

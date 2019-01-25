@@ -20,12 +20,12 @@ defmodule Athel.Scraper do
     groups = find_groups(session)
     if Enum.empty?(groups) do
       Nntp.Client.quit(session)
-      Logger.warn "No common groups found at #{foreigner.hostname}:#{foreigner.port}"
+      Logger.warn "No common groups found at #{foreigner}"
       {:noreply, state}
     else
       message_id_index = find_message_id_index(session)
       Nntp.Client.quit(session)
-      Logger.info "Found common groups #{inspect groups} at #{foreigner.hostname}:#{foreigner.port}"
+      Logger.info "Found common groups #{inspect groups} at #{foreigner}"
       Process.send_after(self(), :run, 0)
 
       {:noreply, %{state | groups: groups, message_id_index: message_id_index}}
@@ -53,16 +53,12 @@ defmodule Athel.Scraper do
                                   groups: groups,
                                   message_id_index: message_id_index}) do
     stream = Task.async_stream(groups, Athel.Scraper, :scrape_group, [foreigner, message_id_index],
-      timeout: 120_000, on_timeout: :kill_task, ordered: false)
-    Stream.run(stream)
+      timeout: 600_000, on_timeout: :kill_task, ordered: false)
+    results = Enum.to_list(stream)
+    Logger.info "Finished #{foreigner}: #{inspect results}"
 
-    #Process.send_after(self(), :run, state.foreigner.interval + timeout)
+    Process.send_after(self(), :run, state.foreigner.interval)
     {:noreply, state}
-  end
-
-  @impl true
-  def handle_info(type, _state) do
-    Logger.info "Received: #{inspect type}"
   end
 
   def scrape_group(group, foreigner, message_id_index) do
