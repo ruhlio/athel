@@ -11,9 +11,9 @@ defmodule Athel.Repo.Migrations.CreateArticle do
       add :subject, :string, null: false
       add :date, :utc_datetime, null: false
       add :content_type, :string, null: false
-      add :body, :text, null: false
-
       add :status, :article_status, null: false
+      add :headers, :map, null: false
+      add :body, :text, null: false
 
       timestamps()
     end

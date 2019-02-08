@@ -10,9 +10,9 @@ defmodule Athel.Article do
     field :subject, :string
     field :date, :utc_datetime
     field :content_type, :string
-    field :body, :string
-
     field :status, :string
+    field :headers, :map
+    field :body, :string
 
     many_to_many :groups, Group,
       join_through: "articles_to_groups",
@@ -35,13 +35,14 @@ defmodule Athel.Article do
 
   def changeset(article, params \\ %{}) do
     article
-    |> cast(params, [:message_id, :from, :subject, :status])
+    |> cast(params, [:message_id, :from, :subject, :status, :headers])
     |> cast_assoc(:groups)
     |> cast_date(params)
     |> parse_message_id
     |> cast_content_type(params)
     |> cast_body(params)
     |> cast_assoc(:parent, required: false)
+    |> validate_headers()
     |> validate_required([:subject, :date, :content_type])
     |> validate_inclusion(:status, ["active", "banned"])
     |> validate_length(:from, max: 255)
@@ -49,19 +50,21 @@ defmodule Athel.Article do
   end
 
   def get_headers(article) do
-    headers = %{"Newsgroups" => format_article_groups(article.groups),
-                "Message-ID" => format_message_id(article.message_id),
-                "References" => format_message_id(article.parent_message_id),
-                "From" => article.from,
-                "Subject" => article.subject,
-                "Date" => format_date(article.date)}
+    headers = Map.merge(article.headers,
+      %{"NEWSGROUPS" => format_article_groups(article.groups),
+        "MESSAGE-ID" => format_message_id(article.message_id),
+        "REFERENCES" => format_message_id(article.parent_message_id),
+        "FROM" => article.from,
+        "SUBJECT" => article.subject,
+        "DATE" => format_date(article.date)})
+
     if Enum.empty?(article.attachments) do
-      {headers |> Map.put("Content-Type", article.content_type), nil}
+      {headers |> Map.put("CONTENT-TYPE", article.content_type), nil}
     else
       boundary = Ecto.UUID.generate()
       headers = headers
-      |> Map.put("MIME-Version", "1.0")
-      |> Map.put("Content-Type", "multipart/mixed; boundary=\"#{boundary}\"")
+      |> Map.put("MIME-VERSION", "1.0")
+      |> Map.put("CONTENT-TYPE", "multipart/mixed; boundary=\"#{boundary}\"")
       {headers, boundary}
     end
   end
@@ -96,12 +99,20 @@ defmodule Athel.Article do
     |> Timex.Timezone.convert("Etc/UTC")
   end
 
+  defp validate_headers(changeset) do
+    if get_field(changeset, :headers) == nil do
+      add_error(changeset, :headers, "is required")
+    else
+      changeset
+    end
+  end
+
   defp cast_content_type(changeset, params) do
     content_type = params[:content_type]
     parse_value(changeset, :content_type, fn _ ->
       case content_type do
         nil -> {:ok, "text/plain"}
-        {type, _} -> {:ok, type}
+        %{value: type} -> {:ok, type}
         type -> {:ok, type}
       end
     end)
@@ -115,7 +126,7 @@ defmodule Athel.Article do
     body = params[:body]
     new_body =
       case params[:content_type] do
-        {_, %{"CHARSET" => charset}} ->
+        %{params: %{"CHARSET" => charset}} ->
           case map_encoding(charset) do
             nil -> body
             encoding ->
@@ -159,7 +170,7 @@ defmodule Athel.Article do
   end
 
   defp format_message_id(message_id) do
-    [?<, message_id, ?>]
+    "<#{message_id}>"
   end
 
   defp format_date(date) when is_nil(date) do
@@ -170,11 +181,12 @@ defmodule Athel.Article do
     Timex.format!(date, Athel.Article.date_format, :strftime)
   end
 
+  defp format_article_groups([]), do: ""
   defp format_article_groups(groups) do
     Enum.reduce(groups, :first, fn
       group, :first -> [group.name]
       group, acc -> [acc, ?,, group.name]
-    end)
+    end) |> IO.iodata_to_binary
   end
 
 end

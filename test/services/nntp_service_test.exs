@@ -79,13 +79,13 @@ defmodule Athel.NntpServiceTest do
   test "post" do
     group = setup_models()
 
-    {:error, changeset} = post_article(%{"NEWSGROUPS" => "heyo"}, [])
+    {:error, changeset} = post_article(%{"NEWSGROUPS" => "heyo", "SUBJECT" => "nothing"}, [])
     assert error(changeset, :groups) == "is invalid"
 
-    {:error, changeset} = post_article(%{}, [])
+    {:error, changeset} = post_article(%{"SUBJECT" => "nothing"}, [])
     assert error(changeset, :groups) == "is invalid"
 
-    {:error, changeset} = post_article(%{"REFERENCES" => "nothing"}, [])
+    {:error, changeset} = post_article(%{"REFERENCES" => "nothing", "SUBJECT" => "nothing"}, [])
     assert error(changeset, :parent) == "is invalid"
 
     headers = %{
@@ -115,7 +115,7 @@ defmodule Athel.NntpServiceTest do
       "NEWSGROUPS" => "fun.times",
       #TODO: decode characterset here also
       "FROM" => "asjo@koldfront.dk (Adam =?iso-8859-1?Q?Sj=F8gren?=)",
-      "CONTENT-TYPE" => {"text/plain", %{"CHARSET" => "iso-8859-1"}}
+      "CONTENT-TYPE" => %{value: "text/plain", params: %{"CHARSET" => "iso-8859-1"}}
     }
     body = File.stream!("test/services/danish_body.txt") |> Enum.to_list
 
@@ -132,7 +132,7 @@ defmodule Athel.NntpServiceTest do
         "FROM" => "Chef Mandude <surferdude88@hotmail.com>",
         "NEWSGROUPS" => "fun.times",
         "MIME-VERSION" => "1.0",
-        "CONTENT-TYPE" => {"multipart/mixed", %{"BOUNDARY" => "surfsup"}}}
+        "CONTENT-TYPE" => %{value: "multipart/mixed", params: %{"BOUNDARY" => "surfsup"}}}
     body =
       ["",
        "--surfsup",
@@ -157,7 +157,7 @@ defmodule Athel.NntpServiceTest do
         "FROM" => "Chef Mandude <surferdude88@hotmail.com>",
         "NEWSGROUPS" => "fun.times",
         "MIME-VERSION" => "1.0",
-        "CONTENT-TYPE" => {"multipart/mixed", %{"BOUNDARY" => "surfsup"}}}
+        "CONTENT-TYPE" => %{value: "multipart/mixed", params: %{"BOUNDARY" => "surfsup"}}}
     single_attachment_body =
       ["--surfsup",
        "Content-Transfer-Encoding: base64",
@@ -195,7 +195,7 @@ defmodule Athel.NntpServiceTest do
         "FROM" => "Chef Mandude <surferdude88@hotmail.com>",
         "NEWSGROUPS" => "fun.times",
         "MIME-VERSION" => "1.0",
-        "CONTENT-TYPE" => {"multipart/mixed", %{"BOUNDARY" => "surfsup"}}}
+        "CONTENT-TYPE" => %{value: "multipart/mixed", params: %{"BOUNDARY" => "surfsup"}}}
     body =
       ["--surfsup",
        "Content-Type: text/plain",
@@ -231,7 +231,7 @@ defmodule Athel.NntpServiceTest do
         "FROM" => "Chef Mandude <surferdude88@hotmail.com>",
         "NEWSGROUPS" => "fun.times",
         "MIME-VERSION" => "1.0",
-        "CONTENT-TYPE" => {"multipart/mixed", %{"BOUNDARY" => "surfsup"}}}
+        "CONTENT-TYPE" => %{value: "multipart/mixed", params: %{"BOUNDARY" => "surfsup"}}}
 
     body =
       ["--surfsup",
@@ -310,6 +310,7 @@ defmodule Athel.NntpServiceTest do
           subject: "whatever",
           body: ["however"],
           content_type: "text/plain",
+          headers: %{},
           status: "active"}))
       |> put_assoc(:groups, [group])
       Repo.insert!(changeset)

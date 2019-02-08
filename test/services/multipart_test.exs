@@ -4,7 +4,7 @@ defmodule Athel.MultipartTest do
   import Athel.Multipart
 
   @headers %{"MIME-VERSION" => "1.0",
-             "CONTENT-TYPE" => {"multipart/mixed", %{"BOUNDARY" => "lapalabra"}}}
+             "CONTENT-TYPE" => %{value: "multipart/mixed", params: %{"BOUNDARY" => "lapalabra"}}}
 
   test "unsupported MIME version" do
     assert read_attachments(%{"MIME-VERSION" => "0.3"}, []) == {:error, :invalid_mime_version}
@@ -15,12 +15,12 @@ defmodule Athel.MultipartTest do
     headers = %{"MIME-VERSION" => "1.0", "CONTENT-TYPE" => nil}
 
     assert read_attachments(%{headers | "CONTENT-TYPE" =>
-                               {"multipart/parallel", %{"BOUNDARY" => "word"}}}, []) == {:error, :unhandled_multipart_type}
+                               %{value: "multipart/parallel", params: %{"BOUNDARY" => "word"}}}, []) == {:error, :unhandled_multipart_type}
     assert read_attachments(%{headers | "CONTENT-TYPE" => "multipart/mixed"}, []) == {:error, :invalid_multipart_type}
 
     assert read_attachments(headers, []) == {:ok, nil}
     assert read_attachments(%{headers | "CONTENT-TYPE" =>
-                           {"text/plain", %{"CHARSET" => "UTF8"}}}, []) == {:ok, nil}
+                           %{value: "text/plain", params: %{"CHARSET" => "UTF8"}}}, []) == {:ok, nil}
     assert read_attachments(%{headers | "CONTENT-TYPE" => "text/plain"}, []) == {:ok, nil}
   end
 

@@ -110,10 +110,8 @@ Original-Received: from hawk.netfonds.no ([80.91.224.246])\r
       ["Content-Type: attachment; boundary=hearsay; pants=off\r\n",
        "\r\n"])
     assert result == {:ok,
-                      %{"CONTENT-TYPE" =>
-                        {"attachment",
-                         %{"BOUNDARY" => "hearsay",
-                           "PANTS" => "off"}}},
+                      %{"CONTENT-TYPE" => %{value: "attachment", params: %{"BOUNDARY" => "hearsay",
+                                                                          "PANTS" => "off"}}},
                       ""}
   end
 
@@ -124,7 +122,7 @@ Original-Received: from hawk.netfonds.no ([80.91.224.246])\r
        "Kind: of\r\n",
        "\r\n"])
     assert result == {:ok,
-                      %{"CONTENT-TYPE" => {"text/plain", %{"CHARSET" => "utf-8"}},
+                      %{"CONTENT-TYPE" => %{value: "text/plain", params: %{"CHARSET" => "utf-8"}},
                         "SUBJECT" => "None",
                         "KIND" => "of"},
                       ""}
@@ -135,29 +133,27 @@ Original-Received: from hawk.netfonds.no ([80.91.224.246])\r
       ["Content-Type: attachment; boundary= \"hearsay\" ; unnecessary=\t\"unfortunately\"   \r\n",
        "\r\n"])
     assert result == {:ok,
-                      %{"CONTENT-TYPE" =>
-                        {"attachment",
-                         %{"BOUNDARY" => "hearsay",
-                           "UNNECESSARY" => "unfortunately"}}},
+                      %{"CONTENT-TYPE" => %{value: "attachment",
+                                            params: %{"BOUNDARY" => "hearsay",
+                                                     "UNNECESSARY" => "unfortunately"}}},
                       ""}
 
     result = parse_headers(
       ["Content-Type: form-data; boundary=keep_this\"\r\n",
       "\r\n"])
     assert result == {:ok,
-                      %{"CONTENT-TYPE" =>
-                        {"form-data",
-                         %{"BOUNDARY" => "keep_this\""}}},
+                      %{"CONTENT-TYPE" => %{value: "form-data",
+                                            params: %{"BOUNDARY" => "keep_this\""}}},
                       ""}
   end
 
   test "header with params split across lines" do
     result = parse_headers("Content-Type: multipart/signed; boundary=\"=-=-=\";\r\n\tmicalg=pgp-sha1; protocol=\"application/pgp-signature\"\r\n\r\n")
     assert result == {:ok,
-                      %{"CONTENT-TYPE" => {"multipart/signed",
-                                           %{"BOUNDARY" => "=-=-=",
-                                             "MICALG" => "pgp-sha1",
-                                             "PROTOCOL" => "application/pgp-signature"}}},
+                      %{"CONTENT-TYPE" => %{value: "multipart/signed",
+                                            params: %{"BOUNDARY" => "=-=-=",
+                                                      "MICALG" => "pgp-sha1",
+                                                      "PROTOCOL" => "application/pgp-signature"}}},
                       ""}
   end
 
@@ -171,10 +167,10 @@ Original-Received: from hawk.netfonds.no ([80.91.224.246])\r
     {:need_more, state} = parse_headers("Content-Type: multipart/alternative; chars\r\n")
     {:need_more, next_state} = parse_headers("\tet=utf8; LESS=chess; \r\n", state)
     {:ok, headers, _} = parse_headers("\tmore=params\r\n\r\n", next_state)
-    assert headers == %{"CONTENT-TYPE" => {"multipart/alternative",
-                                           %{"CHARSET" => "utf8",
-                                             "LESS" => "chess",
-                                             "MORE" => "params"}}}
+    assert headers == %{"CONTENT-TYPE" => %{value: "multipart/alternative",
+                                            params: %{"CHARSET" => "utf8",
+                                                      "LESS" => "chess",
+                                                      "MORE" => "params"}}}
   end
 
   #TODO

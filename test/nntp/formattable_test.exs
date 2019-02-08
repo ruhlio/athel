@@ -55,6 +55,17 @@ defmodule Athel.Nntp.FormatTest do
     assert body == "how was your day?\r\nyou're too kind to ask\r\n\r\n--#{boundary}Content-Transfer-Encoding: base64\r\nContent-Type: text/plain\r\n\r\nTW90b3JjeWNsZXM=\r\n\r\n--#{boundary}Content-Transfer-Encoding: base64\r\nContent-Type: text/plain\r\n\r\nQmlnIHJpZ3M=\r\n\r\n--#{boundary}--\r\n.\r\n"
   end
 
+  test "header names" do
+    # small erlang maps have sorted entries
+    headers = %{"MESSAGE-ID" => "123@example.com",
+                "PARAMETERS" => %{value: "text/plain",
+                                  params: %{"CHARSET" => "UTF-8",
+                                            "SPACES" => "WHERE ARE\tTHEY"}},
+                "ARRAY" => ["alchemist", "test", "report"],
+                "KEBAB-CASE" => "shawarma"}
+    assert format(headers) == "Array: alchemist\r\nArray: test\r\nArray: report\r\nKebab-Case: shawarma\r\nMessage-ID: 123@example.com\r\nParameters: text/plain; charset=UTF-8; spaces=\"WHERE ARE\tTHEY\"\r\n\r\n"
+  end
+
   defp format(formattable) do
     formattable |> Formattable.format |> IO.iodata_to_binary
   end
@@ -74,6 +85,7 @@ defmodule Athel.Nntp.FormatTest do
              from: "Me",
              subject: "Talking to myself",
              date: Timex.to_datetime({{2016, 5, 4}, {3, 2, 1}}, "America/Chicago"),
+             headers: %{},
              parent_message_id: "547@heav.en",
              content_type: "text/plain",
              groups: groups,

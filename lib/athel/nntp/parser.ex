@@ -208,9 +208,9 @@ defmodule Athel.Nntp.Parser do
     [last | rest] = prev
     [merge_header_lines(last, line, state) | rest]
   end
-  defp merge_header_lines({value, params}, line, state) do
+  defp merge_header_lines(%{value: value, params: params}, line, state) do
     next_params = header_params(line, params, state)
-    {value, next_params}
+    %{value: value, params: next_params}
   catch
     {:need_more, {new_params, param_name_acc}} ->
       handle_incomplete_params_parse(state, value, Map.merge(params, new_params), param_name_acc)
@@ -221,7 +221,7 @@ defmodule Athel.Nntp.Parser do
   end
 
   defp handle_incomplete_params_parse(state, header_value, params, param_name_acc) do
-    new_headers = Map.put(state.headers, state.header_name, {header_value, params})
+    new_headers = Map.put(state.headers, state.header_name, %{value: header_value, params: params})
     need_more(%{state | headers: new_headers, param_name_acc: param_name_acc})
   end
 
@@ -253,7 +253,7 @@ defmodule Athel.Nntp.Parser do
   defp header_value(<<";", rest :: binary>>, acc, state = %{header_name: header_name})
   when header_name in @param_headers do
     params = header_params(rest, %{}, state)
-    {terminate_header_value(acc), params}
+    %{value: terminate_header_value(acc), params: params}
   catch
     {:need_more, {params, param_name_acc}} ->
       handle_incomplete_params_parse(state, terminate_header_value(acc), params, param_name_acc)

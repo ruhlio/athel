@@ -255,6 +255,7 @@ defmodule Athel.Nntp.ServerTest do
       groups: [group, other_group],
       attachments: [],
       content_type: "text/plain",
+      headers: %{},
       body: "YOU'RE ONE OF THEM"
     }
 
@@ -324,6 +325,7 @@ defmodule Athel.Nntp.ServerTest do
       from: "You",
       subject: "Is this me?",
       date: Timex.to_datetime({{2012, 7, 4}, {4, 51, 23}}, "Etc/UTC"),
+      headers: %{},
       parent_message_id: nil,
       attachments: [],
       content_type: "text/plain",

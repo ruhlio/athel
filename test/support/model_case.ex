@@ -86,6 +86,7 @@ defmodule Athel.ModelCase do
               date: Timex.now() |> DateTime.add(-(article_count * 2) + index),
               parent_message_id: nil,
               content_type: "text/plain",
+              headers: %{},
               body: "LET'S ROCK OUT FOR JESUS & AMERICA",
               status: "active"})
           |> Changeset.put_assoc(:groups, [group])

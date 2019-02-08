@@ -24,16 +24,16 @@ defmodule AthelWeb.GroupControllerTest do
     assert resp =~ "No articles"
   end
 
-  test "post new topic article to group" do
-    create_group!()
-    article = [subject: "ey", from: "your mom", body: "pastor's dishpole"]
-    conn = post build_conn(), "/groups/cool.runnings", article: article
-    html_response(conn, 302)
+  # test "post new topic article to group" do
+  #   create_group!()
+  #   article = [subject: "ey", from: "your mom", body: "pastor's dishpole"]
+  #   conn = post build_conn(), "/groups/cool.runnings", article: article
+  #   html_response(conn, 302)
 
-    conn = get build_conn(), "/groups/cool.runnings"
-    resp = html_response(conn, 200)
-    assert resp =~ "ey"
-  end
+  #   conn = get build_conn(), "/groups/cool.runnings"
+  #   resp = html_response(conn, 200)
+  #   assert resp =~ "ey"
+  # end
 
   test "post invalid topic article to group" do
     create_group!()

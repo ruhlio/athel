@@ -72,18 +72,18 @@ defmodule Athel.NntpService do
     |> preload(:groups)
     |> offset(^lower_bound)
     |> order_by(:date)
-    |> select([a, _at, i], {i.index, a})
     # subqueries with fragments in the `select` not supported, whole query must
     # be a fragment to be joined on
     # see: https://github.com/elixir-ecto/ecto/issues/1416
     # make `row_number()` zero-indexed to match up with `offset`
     |> join(:inner, [a], i in fragment("""
     SELECT (row_number() OVER (ORDER BY a.date) - 1) as index,
-           a.message_id as message_id
+    a.message_id as message_id
     FROM articles a
     JOIN articles_to_groups a2g ON a2g.message_id = a.message_id
     JOIN groups g ON g.id = a2g.group_id AND g.name = ?
     """, ^group.name), on: i.message_id == a.message_id)
+    |> select([a, _at, i], {i.index, a})
   end
 
   @spec post_article(headers, list(String.t)) :: new_article_result
@@ -117,7 +117,7 @@ defmodule Athel.NntpService do
   defp save_article(headers, body, params, allow_orphan) do
     with {:ok, {body, attachments}} <- read_body(headers, body) do
       changeset = %Article{}
-      |> Article.changeset(Map.put(params, :body, body))
+      |> Article.changeset(params |> Map.put(:body, body) |> Map.put(:headers, headers))
       |> Changeset.prepare_changes(set_groups(headers))
       |> Changeset.prepare_changes(set_parent(headers, allow_orphan))
       |> Changeset.prepare_changes(set_attachments(attachments))
@@ -144,7 +144,7 @@ defmodule Athel.NntpService do
           Changeset.add_error(changeset, :groups, "doesn't allow posting")
         true ->
           changeset.repo.update_all(group_query, inc: [high_watermark: 1])
-          changeset
+          Changeset.put_assoc(changeset, :groups, groups)
       end
     end
   end

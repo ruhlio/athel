@@ -3,7 +3,15 @@ defmodule Athel.ArticleTest do
 
   alias Athel.Article
 
-  @valid_attrs %{message_id: "123@banana", body: "some content", content_type: "some content", date: Timex.now(), from: "some content", parent: nil, subject: "some content", status: "active"}
+  @valid_attrs %{message_id: "123@banana",
+                 body: "some content",
+                 content_type: "text/xml",
+                 date: Timex.now(),
+                 from: "some content",
+                 parent: nil,
+                 subject: "some content",
+                 status: "active",
+                 headers: %{"CONTENT-TYPE" => %{value: "text/xml", params: %{"CHARSET" => "UTF-8"}}}}
   @invalid_attrs %{}
 
   test "changeset with valid attributes" do
@@ -61,6 +69,13 @@ defmodule Athel.ArticleTest do
     changeset = Article.changeset(%Article{}, %{@valid_attrs | body: ["multiline", "fantasy"]})
     assert changeset.valid?
     assert changeset.changes[:body] == "multiline\nfantasy"
+  end
+
+  test "dedicated header field values overwrite values from %Article{:headers}" do
+    changeset = Article.changeset(%Article{}, @valid_attrs)
+    article = Repo.insert!(changeset) |> Repo.preload(:groups) |> Repo.preload(:attachments)
+    {headers, _} = Article.get_headers(article)
+    assert headers["CONTENT-TYPE"] == "text/xml"
   end
 
 end

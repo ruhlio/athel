@@ -32,9 +32,9 @@ defmodule Athel.Multipart do
     content_type = headers["CONTENT-TYPE"]
 
     case content_type do
-      {^valid_type, %{"BOUNDARY" => boundary}} ->
+      %{value: ^valid_type, params: %{"BOUNDARY" => boundary}} ->
         process.(boundary)
-      {type, _} ->
+      %{value: type} ->
         if is_multipart(type) do
           fail(:unhandled_multipart_type)
         else
@@ -55,8 +55,8 @@ defmodule Athel.Multipart do
   end
 
   defp cast_attachment({
-    %{"CONTENT-TYPE" => {"multipart/signed",
-                         %{"MICALG" => micalg, "PROTOCOL" => protocol}}},
+    %{"CONTENT-TYPE" => %{value: "multipart/signed",
+                          params: %{"MICALG" => micalg, "PROTOCOL" => protocol}}},
     _,
     [{headers, body, []}, {_, signature, []}]})
     do
@@ -68,7 +68,7 @@ defmodule Athel.Multipart do
       content: decode_body(headers, body),
       attachments: []}
   end
-  defp cast_attachment({%{"CONTENT-TYPE" => {"multipart/signed", _}}, _, _}) do
+  defp cast_attachment({%{"CONTENT-TYPE" => %{value: "multipart/signed"}}, _, _}) do
     fail(:invalid_multipart_signed_type)
   end
   defp cast_attachment({headers, body, attachments}) do
@@ -82,7 +82,7 @@ defmodule Athel.Multipart do
   defp get_type(headers) do
     case headers["CONTENT-TYPE"] do
       nil -> "text/plain"
-      {type, _params} -> type
+      %{value: type} -> type
       type -> type
     end
   end
@@ -91,9 +91,9 @@ defmodule Athel.Multipart do
     case headers["CONTENT-DISPOSITION"] do
       nil ->
         nil
-      {type, %{"FILENAME" => filename}} when type in ["attachment", "form-data"] ->
+      %{value: type, params: %{"FILENAME" => filename}} when type in ["attachment", "form-data"] ->
         filename
-      {_, _} ->
+      content_disposition when is_map(content_disposition) ->
         fail(:unhandled_content_disposition)
       _ ->
         nil
