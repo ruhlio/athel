@@ -43,9 +43,12 @@ defmodule Athel.Scraper do
   end
 
   defp find_message_id_index(session) do
-    {:ok, format} = Nntp.Client.list(session, ["OVERVIEW.FMT"])
-    # add one to skip leading listing number in XOVER
-    Enum.find_index(format, &("Message-ID:" == &1)) + 1
+    case Nntp.Client.list(session, ["OVERVIEW.FMT"]) do
+      {:ok, format} ->
+        # add one to skip leading listing number in XOVER
+        Enum.find_index(format, &("Message-ID:" == &1)) + 1
+      _error -> 4
+    end
   end
 
   @impl true
@@ -93,8 +96,7 @@ defmodule Athel.Scraper do
   defp extract_ids(overviews, message_id_index) do
     Enum.map(overviews, fn line ->
       raw_id = line
-      |> String.splitter("\t")
-      |> Enum.take(message_id_index + 1)
+      |> String.split("\t")
       |> Enum.at(message_id_index)
       # remove surrounding angle brackets
       String.slice(raw_id, 1, String.length(raw_id) - 2)
