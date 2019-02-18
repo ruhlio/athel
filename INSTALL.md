@@ -22,15 +22,6 @@ To setup for development:
 3. `mix ecto.migrate` - initialize database
 4. `mix test` - run automated tests
 
-## emagic
-
-The emagic build doesn't currently copy the NIF library to the necessary directory.
-Swap '{dev,test}' for prod in production.
-
-1. `mkdir _build/{dev,test}/lib/emagic/priv`
-2. `cp deps/emagic/priv/emagic.so _build/dev/lib/emagic/priv`
-3. `cp deps/emagic/priv/emagic.so _build/test/lib/emagic/priv`
-
 ## Node.js
 
 Node is only being used as a build system for the (currently non-existent) frontend.

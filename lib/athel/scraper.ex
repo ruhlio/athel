@@ -98,8 +98,12 @@ defmodule Athel.Scraper do
       raw_id = line
       |> String.split("\t")
       |> Enum.at(message_id_index)
-      # remove surrounding angle brackets
-      String.slice(raw_id, 1, String.length(raw_id) - 2)
+      if "" == raw_id do
+        Logger.warn("Unexpected XOVER line: #{line}")
+      else
+        # remove surrounding angle brackets
+        String.slice(raw_id, 1, String.length(raw_id) - 2)
+      end
     end)
   end
 

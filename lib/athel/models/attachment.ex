@@ -22,9 +22,8 @@ defmodule Athel.Attachment do
     max_attachment_size = Application.fetch_env!(:athel, Athel.Nntp)[:max_attachment_size]
 
     struct
-    |> cast(params, [:content, :filename])
+    |> cast(params, [:content, :filename, :type])
     |> hash_changeset
-    |> determine_type
     |> validate_required([:type, :hash, :content])
     |> validate_length(:content, max: max_attachment_size)
   end
@@ -40,19 +39,6 @@ defmodule Athel.Attachment do
       content ->
         {:ok, hash} = hash_content(content)
         put_change(changeset, :hash, hash)
-    end
-  end
-
-  defp determine_type(changeset = %Changeset{changes: changes}) do
-    case changes[:content] do
-      nil -> add_error(changeset, :type, "unrecognized type of content")
-      content ->
-        case :emagic.from_buffer(content) do
-          {:ok, type} ->
-            put_change(changeset, :type, type)
-          {:error, reason} ->
-            add_error(changeset, :type, to_string(reason))
-        end
     end
   end
 

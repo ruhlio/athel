@@ -3,7 +3,7 @@ defmodule Athel.AttachmentTest do
 
   alias Athel.Attachment
 
-  @valid_attrs %{content: "some content", type: "some content"}
+  @valid_attrs %{content: "some content", type: "some/type"}
   @invalid_attrs %{}
 
   test "changeset with valid attributes" do
@@ -25,12 +25,10 @@ defmodule Athel.AttachmentTest do
     assert changeset.changes[:hash] == hash
   end
 
-  test "determines content type" do
+  test "takes content type at face value" do
     changeset = Attachment.changeset(%Attachment{},
       %{@valid_attrs | content: "<html><body><h1>BIG TEXT</h1></body></html>"})
-    assert changeset.changes[:type] == "text/html"
-
-    assert_invalid(%Attachment{}, :type, <<0, 0, 0, 0>>, "unrecognized type of content")
+    assert changeset.changes[:type] == "some/type"
   end
 
   test "limits content length" do
