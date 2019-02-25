@@ -44,7 +44,7 @@ defmodule Athel.NntpService do
       preload: [attachments: at],
       preload: [:groups],
       where: a.date > ^date and g.name == ^group_name,
-      order_by: a.inserted_at)
+      order_by: a.date)
   end
 
   @spec get_article_by_index(Group.t, integer) :: indexed_article | nil

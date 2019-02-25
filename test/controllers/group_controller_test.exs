@@ -24,6 +24,45 @@ defmodule AthelWeb.GroupControllerTest do
     assert resp =~ "No articles"
   end
 
+  test "pagination", %{conn: conn} do
+    Athel.ModelCase.setup_models(200)
+
+    request = get conn, "/groups/fun.times"
+    response = html_response(request, 200)
+    for page <- 0..4 do
+      assert response =~ "fun.times?page=#{page}"
+    end
+    assert response =~ "fun.times?page=13"
+    assert length(String.split(response, "Talking to myself")) == 15 + 1
+
+    request = get conn, "/groups/fun.times?page=13"
+    response = html_response(request, 200)
+    for page <- 9..13 do
+      assert response =~ "fun.times?page=#{page}"
+    end
+    assert length(String.split(response, "Talking to myself")) == 5 + 1
+  end
+
+  test "pagination without enough articles to show all pages", %{conn: conn} do
+    Athel.ModelCase.setup_models(32)
+
+    request = get conn, "/groups/fun.times"
+    response = html_response(request, 200)
+
+    for page <- 0..2 do
+      assert response =~ "fun.times?page=#{page}"
+    end
+    refute response =~ "fun.times?pages=3"
+
+    request = get conn, "/groups/fun.times?page=1"
+    response = html_response(request, 200)
+
+    for page <- 0..2 do
+      assert response =~ "fun.times?page=#{page}"
+    end
+    refute response =~ "fun.times?pages=3"
+  end
+
   # test "post new topic article to group" do
   #   create_group!()
   #   article = [subject: "ey", from: "your mom", body: "pastor's dishpole"]
