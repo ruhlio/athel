@@ -163,6 +163,18 @@ defmodule Athel.MultipartTest do
     assert attachment.content == "Can't get my\r\nline endings\nconsistent\ri quit"
   end
 
+  # this is real
+  test "duplicate transfer encoding headers" do
+    {:ok, [attachment]} = read_attachments(@headers,
+      ["--lapalabra",
+       "Content-Transfer-Encoding: base64",
+       "Content-Transfer-Encoding: base64",
+       "",
+       "Q2FuJ3QgZ2V0IG15DQpsaW5lIGVuZGluZ3MKY29uc2lzdGVudA1pIHF1aXQ=",
+       "--lapalabra--"])
+    assert attachment.content == "Can't get my\r\nline endings\nconsistent\ri quit"
+  end
+
   test "attachment without headers" do
     {:ok, [attachment]} = read_attachments(@headers,
       ["--lapalabra",

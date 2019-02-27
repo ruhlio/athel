@@ -123,7 +123,11 @@ defmodule Athel.Article do
     cast_body(changeset, %{params | body: joined_body})
   end
   defp cast_body(changeset, params) do
-    body = params[:body]
+    body =
+      case params[:body] do
+        nil -> nil
+        body -> String.trim(body, "\0")
+      end
     new_body =
       case params[:content_type] do
         %{params: %{"CHARSET" => charset}} ->

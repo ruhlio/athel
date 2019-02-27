@@ -101,7 +101,11 @@ defmodule Athel.Multipart do
   end
 
   defp decode_body(headers, body) do
-    encoding = headers |> Map.get("CONTENT-TRANSFER-ENCODING", "") |> String.upcase
+    encoding =
+      case Map.get(headers, "CONTENT-TRANSFER-ENCODING", "") do
+        [encoding | _rest] -> String.upcase(encoding)
+        encoding -> String.upcase(encoding)
+      end
 
     case encoding do
       "" ->

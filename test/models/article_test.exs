@@ -78,4 +78,9 @@ defmodule Athel.ArticleTest do
     assert headers["CONTENT-TYPE"] == "text/xml"
   end
 
+  test "trims down a null body" do
+    changeset = Article.changeset(%Article{}, %{@valid_attrs | body: <<0, 0, 0, 0>>})
+    assert changeset.changes[:body] == ""
+  end
+
 end

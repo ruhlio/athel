@@ -63,25 +63,6 @@ defmodule AthelWeb.GroupControllerTest do
     refute response =~ "fun.times?pages=3"
   end
 
-  # test "post new topic article to group" do
-  #   create_group!()
-  #   article = [subject: "ey", from: "your mom", body: "pastor's dishpole"]
-  #   conn = post build_conn(), "/groups/cool.runnings", article: article
-  #   html_response(conn, 302)
-
-  #   conn = get build_conn(), "/groups/cool.runnings"
-  #   resp = html_response(conn, 200)
-  #   assert resp =~ "ey"
-  # end
-
-  test "post invalid topic article to group" do
-    create_group!()
-    article = [subject: "", from: "", body: "IT WAS ME ALL ALONG, AUSTIN"]
-    conn = post build_conn(), "/groups/cool.runnings", article: article
-    resp = html_response(conn, 200)
-    resp =~ "Please correct errors"
-  end
-
   defp create_group!() do
     Repo.insert!(%Group{
           name: "cool.runnings",
