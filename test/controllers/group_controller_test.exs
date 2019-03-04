@@ -33,14 +33,14 @@ defmodule AthelWeb.GroupControllerTest do
       assert response =~ "fun.times?page=#{page}"
     end
     assert response =~ "fun.times?page=13"
-    assert length(String.split(response, "Talking to myself")) == 15 + 1
+    assert count_instances(response, "Talking to myself") == 15
 
     request = get conn, "/groups/fun.times?page=13"
     response = html_response(request, 200)
     for page <- 9..13 do
       assert response =~ "fun.times?page=#{page}"
     end
-    assert length(String.split(response, "Talking to myself")) == 5 + 1
+    assert count_instances(response, "Talking to myself") == 5
   end
 
   test "pagination without enough articles to show all pages", %{conn: conn} do
@@ -63,6 +63,22 @@ defmodule AthelWeb.GroupControllerTest do
     refute response =~ "fun.times?pages=3"
   end
 
+  test "search", %{conn: conn} do
+    Athel.ModelCase.setup_models(5)
+    from(a in Athel.Article, where: a.message_id == "01@test.com")
+    |> Repo.update_all(set: [subject: "Asphalt"])
+    Athel.ArticleSearchIndex.update_view()
+
+    request = get conn, "/groups/fun.times?query=As"
+    response = html_response(request, 200)
+    assert response =~ "Asphalt"
+    assert count_instances(response, "/articles") == 1
+
+    request = get conn, "/groups/fun.times?query=OREODUNK"
+    response = html_response(request, 200)
+    assert count_instances(response, "/articles") == 0
+  end
+
   defp create_group!() do
     Repo.insert!(%Group{
           name: "cool.runnings",
@@ -70,5 +86,9 @@ defmodule AthelWeb.GroupControllerTest do
           status: "y",
           low_watermark: 0,
           high_watermark: 0})
+  end
+
+  defp count_instances(string, match) do
+    length(String.split(string, match)) - 1
   end
 end

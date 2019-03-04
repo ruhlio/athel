@@ -2,7 +2,7 @@ defmodule Athel.Repo.Migrations.CreateGroup do
   use Ecto.Migration
 
   def up do
-    execute "create type group_status as enum ('y', 'n', 'm')"
+    execute "CREATE TYPE group_status AS ENUM ('y', 'n', 'm')"
 
     create table(:groups) do
       add :name, :string, size: 128, null: false
@@ -19,7 +19,7 @@ defmodule Athel.Repo.Migrations.CreateGroup do
 
   def down do
     drop table(:groups)
-    execute "drop type group_status"
+    execute "DROP TYPE group_status"
   end
 
 end

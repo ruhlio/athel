@@ -13,7 +13,15 @@ defmodule AthelWeb.GroupController do
 
   def show(conn, params = %{"name" => name}) do
     {page, _} = params |> Map.get("page", "0") |> Integer.parse
-    {group, article_count} = load_group(name, page)
+    query = Map.get(params, "query", "")
+    {group, article_count} = load_group(name, page, query)
+    page_params = calculate_page_params(page, article_count)
+
+    render(conn, "show.html",
+      page_params ++ [group: group, article_count: article_count])
+  end
+
+  defp calculate_page_params(page, article_count) do
     page_count = ceil(article_count / @articles_per_page)
     # are these div/rem results inlined?
     pages_per_direction = div(@page_link_count, 2)
@@ -26,52 +34,30 @@ defmodule AthelWeb.GroupController do
       start_page..end_page
     end
 
-    render(conn, "show.html",
-      group: group,
-      article_count: article_count,
-      page: page,
-      per_page: @articles_per_page,
-      page_count: page_count,
-      pages: page_range)
+    [page: page,
+     per_page: @articles_per_page,
+     page_count: page_count,
+     pages: page_range]
   end
 
-  # def create_topic(conn, %{
-  #       "name" => name,
-  #       "article" => %{"from" => from, "subject" => subject, "body" => body}}) do
-  #   group = Repo.one!(Group, name: name)
-  #   article_changes = %{
-  #     from: from,
-  #     subject: subject,
-  #     body: String.split(body, "\n"),
-  #     content_type: "text/plain",
-  #     status: "active"
-  #   }
-
-  #   #TODO: move out of NntpService
-  #   case NntpService.new_topic([group], article_changes) do
-  #     {:ok, article} ->
-  #       conn
-  #       |> put_flash(:success, "Article posted")
-  #       |> redirect(to: article_path(conn, :show, name, article.message_id))
-  #     {:error, changeset} ->
-  #       conn
-  #       |> put_flash(:error, "Please correct the errors and resubmit")
-  #       |> render("show.html", group: group, article_changeset: changeset)
-  #   end
-  # end
-
-  defp load_group(name, page) do
-    group_query = from g in Group,
-      left_join: a in assoc(g, :articles),
+  defp load_group(name, page, query) do
+    base_query = from g in Group,
       where: g.name == ^name
-
-    group = group_query
+    group_query = if "" != query do
+      base_query
+      |> join(:left, [g], a in assoc(g, :article_search_indexes))
+      |> where([_, a], fragment("? is null or ? @@ to_tsquery(?::regconfig, ?)", a.document, a.document, a.language, ^query))
+    else
+      base_query
+      |> join(:left, [g], a in assoc(g, :articles))
+    end
     |> limit(@articles_per_page)
     |> offset(^(page * @articles_per_page))
     |> order_by([_, a], desc: a.date)
     |> preload([_, a], articles: a)
-    |> Repo.one!
-    article_count = group_query
+
+    group = Repo.one!(group_query)
+    article_count = base_query
     |> select(count())
     |> Repo.one!
 

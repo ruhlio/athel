@@ -13,6 +13,9 @@ defmodule Athel.Group do
     many_to_many :articles, Athel.Article,
       join_through: "articles_to_groups",
       join_keys: [group_id: :id, message_id: :message_id]
+    many_to_many :article_search_indexes, Athel.ArticleSearchIndex,
+      join_through: "articles_to_groups",
+      join_keys: [group_id: :id, message_id: :message_id]
 
     timestamps()
   end
