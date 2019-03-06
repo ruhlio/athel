@@ -3,6 +3,11 @@
 @primary-color: #708090;
 @error-color: rgb(202, 60, 60);
 
+.unstyle-list() {
+    padding: 0;
+    list-style-type: none;
+}
+
 .flash {
     color: #fff;
     padding: 0.25em;
@@ -66,7 +71,7 @@ header {
     flex: 1 auto;
 
     .navigation {
-        list-style: none;
+        .unstyle-list();
         display: flex;
         align-items: stretch;
         flex-direction: column;
@@ -74,7 +79,6 @@ header {
 
     .navigation li {
         display: inline;
-        list-style-type: none;
         font-size: 1.1em;
         border-right: 1px dashed @primary-color;
         border-bottom: 1px dashed @primary-color;
@@ -101,6 +105,18 @@ main {
     padding-left: 2em;
 }
 
+// pagination
+
+.pagination {
+    .unstyle-list();
+    display: flex;
+
+    li a {
+        display: block;
+        padding: 0.25em 0.25em;
+    }
+}
+
 // groups
 
 .groups-table {
@@ -117,6 +133,22 @@ main {
     // don't shade the th row
     tr:nth-child(1) {
         background-color: #fff;
+    }
+}
+
+.articles {
+    .unstyle-list();
+    margin-bottom: 0.5em;
+
+    li {
+        margin-bottom: 0.5em;
+        padding-bottom: 0.25em;
+    }
+
+    li a {
+        border-left: 1px dashed @primary-color;
+        border-bottom: 1px dashed @primary-color;
+        padding: 0.1em 0.1em;
     }
 }
 

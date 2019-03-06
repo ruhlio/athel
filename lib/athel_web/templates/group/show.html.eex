@@ -4,7 +4,7 @@
     <p>No articles</p>
 <% end %>
 
-<ul>
+<ul class="articles">
     <%= for article <- @group.articles do %>
         <li>
             <a href="<%= article_path(@conn, :show, @group.name, article.message_id) %>">
