@@ -37,7 +37,7 @@ defmodule AthelWeb.GroupControllerTest do
 
     request = get conn, "/groups/fun.times?page=13"
     response = html_response(request, 200)
-    for page <- 9..12 do
+    for page <- 9..13 do
       assert response =~ "fun.times?page=#{page}"
     end
     assert count_instances(response, "Talking to myself") == 5
@@ -61,6 +61,15 @@ defmodule AthelWeb.GroupControllerTest do
       assert response =~ "fun.times?page=#{page}"
     end
     refute response =~ "fun.times?pages=3"
+  end
+
+  test "no pagination when too few articles", %{conn: conn} do
+    Athel.ModelCase.setup_models(5)
+
+    request = get conn, "/groups/fun.times"
+    response = html_response(request, 200)
+
+    refute response =~ "fun.times?page="
   end
 
   test "search", %{conn: conn} do

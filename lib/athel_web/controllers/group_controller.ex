@@ -20,7 +20,7 @@ defmodule AthelWeb.GroupController do
   end
 
   defp calculate_page_params(page, article_count) do
-    page_count = ceil(article_count / @articles_per_page)
+    page_count = ceil(article_count / @articles_per_page) - 1
     # are these div/rem results inlined?
     pages_per_direction = div(@page_link_count, 2)
     page_offset = rem(@page_link_count, 2)

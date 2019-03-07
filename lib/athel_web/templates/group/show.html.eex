@@ -1,7 +1,7 @@
 <h2><%= @group.name %></h2>
 
 <%= if Enum.empty? @group.articles do %>
-    <p>No articles</p>
+<p>No articles</p>
 <% end %>
 
 <ul class="articles">
@@ -15,6 +15,7 @@
     <% end %>
 </ul>
 
+<%= if Enum.count(@pages) > 1 do %>
 <ul class="pagination">
     <li>
         <a href="<%= group_path(@conn, :show, @group.name, page: 0) %>">&laquo;</a>
@@ -27,6 +28,7 @@
        </li>
     <% end %>
     <li>
-        <a href="<%= group_path(@conn, :show, @group.name, page: @page_count - 1) %>">&raquo;</a>
+        <a href="<%= group_path(@conn, :show, @group.name, page: @page_count) %>">&raquo;</a>
     </li>
 </ul>
+<% end %>
