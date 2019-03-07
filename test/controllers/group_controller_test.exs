@@ -37,7 +37,7 @@ defmodule AthelWeb.GroupControllerTest do
 
     request = get conn, "/groups/fun.times?page=13"
     response = html_response(request, 200)
-    for page <- 9..13 do
+    for page <- 9..12 do
       assert response =~ "fun.times?page=#{page}"
     end
     assert count_instances(response, "Talking to myself") == 5

@@ -1,13 +1,11 @@
 defmodule AthelWeb.GroupController do
   use AthelWeb, :controller
 
-  alias Athel.Group
-
   @articles_per_page 15
   @page_link_count 5
 
   def index(conn, _params) do
-    groups = Repo.all(Group)
+    groups = Repo.all(Athel.Group)
     render(conn, "index.html", groups: groups)
   end
 
@@ -41,25 +39,38 @@ defmodule AthelWeb.GroupController do
   end
 
   defp load_group(name, page, query) do
-    base_query = from g in Group,
-      where: g.name == ^name
-    joined_query = if "" != query do
-      base_query
-      |> join(:left, [g], a in assoc(g, :article_search_indexes), on: fragment("? @@ to_tsquery(?::regconfig, ?) AND ? is null", a.document, a.language, ^query, a.parent_message_id))
+    group = Repo.one!(from g in Athel.Group,
+      where: g.name == ^name)
+    article_source = if "" != query do
+      Athel.ArticleSearchIndex
     else
-      base_query
-      |> join(:left, [g], a in assoc(g, :articles), on: is_nil(a.parent_message_id))
+      Athel.Article
     end
 
-    group_query = joined_query
-    |> limit(@articles_per_page)
-    |> offset(^(page * @articles_per_page))
-    |> order_by([_, a], desc: a.date)
-    |> preload([_, a], articles: a)
-    count_query = joined_query
-    |> select([_, a], count(a.message_id))
+    article_query = from a in article_source,
+      join: a2g in ^(from "articles_to_groups"), on: a2g.message_id == a.message_id,
+      where: is_nil(a.parent_message_id),
+      where: a2g.group_id == ^group.id,
+      order_by: [desc: a.date],
+      limit: @articles_per_page,
+      offset: ^(page * @articles_per_page),
+      select: {a, over(count())}
 
-    {Repo.one!(group_query), Repo.one!(count_query)}
+    articles = if "" != query do
+      article_query
+      |> where([a], fragment("? @@ to_tsquery(?::regconfig, ?)", a.document, a.language, ^query))
+      |> Repo.all
+    else
+      Repo.all(article_query)
+    end
+
+    group = %{group | articles: Enum.map(articles, fn {article, _} -> article end)}
+    article_count =
+      case articles do
+        [] -> 0
+        [{_, count} | _] -> count
+      end
+    {group, article_count}
   end
 
 end
