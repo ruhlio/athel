@@ -6,7 +6,7 @@ defmodule Athel.Repo.Migrations.CreateArticle do
 
     create table(:articles, primary_key: false) do
       add :message_id, :string, primary_key: true, size: 192
-      add :parent_message_id, references(:articles, column: :message_id, type: :string), size: 192
+      add :parent_message_id, :string, size: 192
       add :from, :string, null: true
       add :subject, :string, null: false
       add :date, :utc_datetime, null: false
@@ -18,6 +18,8 @@ defmodule Athel.Repo.Migrations.CreateArticle do
       timestamps()
     end
 
+    create index(:articles, :parent_message_id)
+
     create table(:articles_to_groups, primary_key: false) do
       add :message_id, references(:articles, column: :message_id, type: :string)
       add :group_id, references(:groups)
@@ -27,6 +29,7 @@ defmodule Athel.Repo.Migrations.CreateArticle do
 
   def down do
     drop table(:articles_to_groups)
+    drop index(:articles, :parent_message_id)
     drop table(:articles)
     execute "drop type article_status"
   end

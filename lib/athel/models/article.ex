@@ -28,8 +28,6 @@ defmodule Athel.Article do
     timestamps()
   end
 
-  # against spec: allows consecutive .
-  @message_id_format Regex.compile!("^<?([a-zA-Z0-9.!#$%&'*+-/=?_`{|}~^]{2,128}@[a-zA-Z0-9.-]{2,63})>?$")
   @date_format "%a, %d %b %Y %H:%M:%S %z"
   def date_format, do: @date_format
 
@@ -38,7 +36,6 @@ defmodule Athel.Article do
     |> cast(params, [:message_id, :from, :subject, :status, :headers])
     |> cast_assoc(:groups)
     |> cast_date(params)
-    |> parse_message_id
     |> cast_content_type(params)
     |> cast_body(params)
     |> cast_assoc(:parent, required: false)
@@ -47,6 +44,8 @@ defmodule Athel.Article do
     |> validate_inclusion(:status, ["active", "banned"])
     |> validate_length(:from, max: 255)
     |> validate_length(:subject, max: 255)
+    |> validate_length(:message_id, max: 192)
+    |> validate_format(:message_id, ~r/^[^<].*[^>]$/, message: "remove surrounding brackets")
   end
 
   def get_headers(article) do
@@ -67,15 +66,6 @@ defmodule Athel.Article do
       |> Map.put("CONTENT-TYPE", "multipart/mixed; boundary=\"#{boundary}\"")
       {headers, boundary}
     end
-  end
-
-  defp parse_message_id(changeset) do
-    parse_value(changeset, :message_id, fn message_id ->
-      case Regex.run(@message_id_format, message_id) do
-        nil -> {:error, "has invalid format"}
-        [_, id] -> {:ok, id}
-      end
-    end)
   end
 
 

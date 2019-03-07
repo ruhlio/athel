@@ -27,12 +27,7 @@ defmodule Athel.ArticleTest do
   end
 
   test "message id format" do
-    changeset = Article.changeset(%Article{}, %{@valid_attrs | message_id: "balogna"})
-    assert error(changeset, :message_id) == "has invalid format"
-
-    changeset = Article.changeset(%Article{}, %{@valid_attrs | message_id: "<with@angle.brackets>"})
-    assert changeset.valid?
-    assert changeset.changes[:message_id] == "with@angle.brackets"
+    assert_invalid(%Article{}, :message_id, "<with@angle.brackets>", "remove surrounding brackets")
   end
 
   test "string date" do

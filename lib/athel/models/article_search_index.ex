@@ -7,7 +7,7 @@ defmodule Athel.ArticleSearchIndex do
     field :subject, :string
     field :date, :utc_datetime
     field :status, :string
-    field :document, :string
+    field :document, {:array, :map}
 
     many_to_many :groups, Athel.Group,
       join_through: "articles_to_groups",
@@ -15,7 +15,6 @@ defmodule Athel.ArticleSearchIndex do
   end
 
   def update_view() do
-    res = Ecto.Adapters.SQL.query!(Athel.Repo, "REFRESH MATERIALIZED VIEW article_search_index")
-    IO.puts inspect(res)
+    Ecto.Adapters.SQL.query!(Athel.Repo, "REFRESH MATERIALIZED VIEW article_search_index")
   end
 end

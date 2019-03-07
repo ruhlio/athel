@@ -321,6 +321,11 @@ defmodule Athel.NntpServiceTest do
     assert get_articles_created_after("bad.times", ~N[2010-04-05 22:22:22]) == []
   end
 
+  test "extracting message id" do
+    assert extract_message_id("<asd>") == "asd"
+    assert extract_message_id(nil) == nil
+  end
+
   defp message_ids(articles) do
     Enum.map(articles, fn {row, article} -> {row, article.message_id} end)
   end

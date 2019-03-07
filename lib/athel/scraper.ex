@@ -101,8 +101,7 @@ defmodule Athel.Scraper do
       if "" == raw_id do
         Logger.warn("Unexpected XOVER line: #{line}")
       else
-        # remove surrounding angle brackets
-        String.slice(raw_id, 1, String.length(raw_id) - 2)
+        NntpService.extract_message_id(raw_id)
       end
     end)
   end

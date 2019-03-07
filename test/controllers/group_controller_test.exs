@@ -69,7 +69,7 @@ defmodule AthelWeb.GroupControllerTest do
     |> Repo.update_all(set: [subject: "Asphalt"])
     Athel.ArticleSearchIndex.update_view()
 
-    request = get conn, "/groups/fun.times?query=As"
+    request = get conn, "/groups/fun.times?query=asphalt"
     response = html_response(request, 200)
     assert response =~ "Asphalt"
     assert count_instances(response, "/articles") == 1
@@ -77,6 +77,23 @@ defmodule AthelWeb.GroupControllerTest do
     request = get conn, "/groups/fun.times?query=OREODUNK"
     response = html_response(request, 200)
     assert count_instances(response, "/articles") == 0
+  end
+
+  test "doesn't show child articles", %{conn: conn} do
+    Athel.ModelCase.setup_models(5)
+    from(a in Athel.Article, where: a.message_id == "01@test.com" or a.message_id == "02@test.com")
+    |> Repo.update_all(set: [subject: "Asphalt"])
+    from(a in Athel.Article, where: a.message_id == "02@test.com")
+    |> Repo.update_all(set: [parent_message_id: "01@test.com"])
+    Athel.ArticleSearchIndex.update_view()
+
+    request = get conn, "/groups/fun.times"
+    response = html_response(request, 200)
+    assert count_instances(response, "/articles") == 4
+
+    request = get conn, "/groups/fun.times?query=asphalt"
+    response = html_response(request, 200)
+    assert count_instances(response, "/articles") == 1
   end
 
   defp create_group!() do

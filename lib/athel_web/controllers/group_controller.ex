@@ -43,25 +43,23 @@ defmodule AthelWeb.GroupController do
   defp load_group(name, page, query) do
     base_query = from g in Group,
       where: g.name == ^name
-    group_query = if "" != query do
+    joined_query = if "" != query do
       base_query
-      |> join(:left, [g], a in assoc(g, :article_search_indexes))
-      |> where([_, a], fragment("? is null or ? @@ to_tsquery(?::regconfig, ?)", a.document, a.document, a.language, ^query))
+      |> join(:left, [g], a in assoc(g, :article_search_indexes), on: fragment("? @@ to_tsquery(?::regconfig, ?) AND ? is null", a.document, a.language, ^query, a.parent_message_id))
     else
       base_query
-      |> join(:left, [g], a in assoc(g, :articles))
+      |> join(:left, [g], a in assoc(g, :articles), on: is_nil(a.parent_message_id))
     end
+
+    group_query = joined_query
     |> limit(@articles_per_page)
     |> offset(^(page * @articles_per_page))
     |> order_by([_, a], desc: a.date)
     |> preload([_, a], articles: a)
+    count_query = joined_query
+    |> select([_, a], count(a.message_id))
 
-    group = Repo.one!(group_query)
-    article_count = base_query
-    |> select(count())
-    |> Repo.one!
-
-    {group, article_count}
+    {Repo.one!(group_query), Repo.one!(count_query)}
   end
 
 end
