@@ -3,8 +3,8 @@ defmodule Athel.Group do
 
   import Ecto.Changeset
 
+  @primary_key {:name, :string, autogenerate: false}
   schema "groups" do
-    field :name, :string
     field :description, :string
     field :low_watermark, :integer
     field :high_watermark, :integer
@@ -12,10 +12,10 @@ defmodule Athel.Group do
 
     many_to_many :articles, Athel.Article,
       join_through: "articles_to_groups",
-      join_keys: [group_id: :id, message_id: :message_id]
+      join_keys: [group_name: :name, message_id: :message_id]
     many_to_many :article_search_indexes, Athel.ArticleSearchIndex,
       join_through: "articles_to_groups",
-      join_keys: [group_id: :id, message_id: :message_id]
+      join_keys: [group_name: :name, message_id: :message_id]
 
     timestamps()
   end
@@ -28,7 +28,7 @@ defmodule Athel.Group do
     |> cast(params, [:name, :description, :low_watermark, :high_watermark, :status])
     |> validate_required([:name, :low_watermark, :high_watermark, :status])
     |> validate_format(:name, ~r/^[a-zA-Z0-9_.-]{1,128}$/)
-    |> unique_constraint(:name)
+    |> unique_constraint(:name, name: "groups_pkey")
     |> validate_inclusion(:status, ["y", "n", "m"])
   end
 end

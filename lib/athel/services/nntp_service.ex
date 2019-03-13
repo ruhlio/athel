@@ -47,24 +47,23 @@ defmodule Athel.NntpService do
       order_by: a.date)
   end
 
-  @spec get_article_by_index(Group.t, integer) :: indexed_article | nil
-  def get_article_by_index(group, index) do
-    group |> base_by_index(index) |> limit(1) |> Repo.one
+  @spec get_article_by_index(String.t, integer) :: indexed_article | nil
+  def get_article_by_index(group_name, index) do
+    base_by_index(group_name, index) |> limit(1) |> Repo.one
   end
 
-  @spec get_article_by_index(Group.t, integer, :infinity) :: list(indexed_article)
-  def get_article_by_index(group, lower_bound, :infinity) do
-    group |> base_by_index(lower_bound) |> Repo.all
+  @spec get_article_by_index(String.t, integer, :infinity) :: list(indexed_article)
+  def get_article_by_index(group_name, lower_bound, :infinity) do
+    base_by_index(group_name, lower_bound) |> Repo.all
   end
 
-  @spec get_article_by_index(Group.t, integer, integer) :: list(indexed_article)
-  def get_article_by_index(group, lower_bound, upper_bound) do
+  @spec get_article_by_index(String.t, integer, integer) :: list(indexed_article)
+  def get_article_by_index(group_name, lower_bound, upper_bound) do
     count = max(upper_bound - lower_bound, 0)
-    group |> base_by_index(lower_bound) |> limit(^count) |> Repo.all
+    base_by_index(group_name, lower_bound) |> limit(^count) |> Repo.all
   end
 
-  defp base_by_index(group, lower_bound) do
-    lower_bound = max(group.low_watermark, lower_bound)
+  defp base_by_index(group_name, lower_bound) do
     Article
     |> where(status: "active")
     |> join(:left, [a], at in assoc(a, :attachments))
@@ -80,9 +79,8 @@ defmodule Athel.NntpService do
     SELECT (row_number() OVER (ORDER BY a.date) - 1) as index,
     a.message_id as message_id
     FROM articles a
-    JOIN articles_to_groups a2g ON a2g.message_id = a.message_id
-    JOIN groups g ON g.id = a2g.group_id AND g.name = ?
-    """, ^group.name), on: i.message_id == a.message_id)
+    JOIN articles_to_groups a2g ON a2g.message_id = a.message_id AND a2g.group_name = ?
+    """, ^group_name), on: i.message_id == a.message_id)
     |> select([a, _at, i], {i.index, a})
   end
 

@@ -11,7 +11,8 @@ defmodule Athel.AuthService do
       %{username: username,
         email: email,
         salt: salt,
-        hashed_password: hash_password(password, salt)})
+        hashed_password: hash_password(password, salt),
+        status: "active"})
     Repo.insert(changeset)
   end
 

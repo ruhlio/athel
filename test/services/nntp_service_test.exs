@@ -37,38 +37,30 @@ defmodule Athel.NntpServiceTest do
   test "get article by index" do
     group = setup_models(5)
 
-    {index, article} = get_article_by_index(group, 2)
+    {index, article} = get_article_by_index(group.name, 2)
     assert {index, article.message_id} == {2, "02@test.com"}
 
-    articles = get_article_by_index(group, 2, :infinity)
+    articles = get_article_by_index(group.name, 2, :infinity)
     assert message_ids(articles) == [
       {2, "02@test.com"},
       {3, "03@test.com"},
       {4, "04@test.com"}
     ]
 
-    articles = get_article_by_index(group, 2, 4)
+    articles = get_article_by_index(group.name, 2, 4)
     assert message_ids(articles) == [
       {2, "02@test.com"},
       {3, "03@test.com"}
     ]
 
-    articles = get_article_by_index(group, 7, 5)
+    articles = get_article_by_index(group.name, 7, 5)
     assert articles == []
-
-    group = Repo.update! Group.changeset(group, %{low_watermark: 2})
-    articles = get_article_by_index(group, 1, :infinity)
-    assert message_ids(articles) == [
-      {2, "02@test.com"},
-      {3, "03@test.com"},
-      {4, "04@test.com"}
-    ]
 
     group = Repo.update! Group.changeset(group, %{low_watermark: 0})
     article = Repo.get!(Article, "02@test.com")
     changeset = change(article, status: "banned")
     Repo.update!(changeset)
-    assert get_article_by_index(group, 0, :infinity) |> message_ids == [
+    assert get_article_by_index(group.name, 0, :infinity) |> message_ids == [
       {0, "00@test.com"},
       {1, "01@test.com"},
       {3, "03@test.com"},

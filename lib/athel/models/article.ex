@@ -16,7 +16,7 @@ defmodule Athel.Article do
 
     many_to_many :groups, Group,
       join_through: "articles_to_groups",
-      join_keys: [message_id: :message_id, group_id: :id]
+      join_keys: [message_id: :message_id, group_name: :name]
     belongs_to :parent, __MODULE__,
       foreign_key: :parent_message_id,
       references: :message_id,

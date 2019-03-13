@@ -131,19 +131,19 @@ defmodule Athel.Nntp.ServerTest do
 
   test "LISTGROUP", %{socket: socket} do
     group = setup_models(10)
-    Repo.update Group.changeset(group, %{low_watermark: 5, high_watermark: 10})
+    Repo.update Group.changeset(group, %{high_watermark: 10})
 
     assert send_recv(socket, "LISTGROUP\r\n") =~ status(412)
     assert send_recv(socket, "LISTGROUP DINGUS.LAND\r\n") =~ status(411)
 
-    valid_response = "211 5 5 10 fun.times\r\n5\r\n6\r\n7\r\n8\r\n9\r\n.\r\n"
+    valid_response = "211 10 0 10 fun.times\r\n1\r\n2\r\n3\r\n4\r\n5\r\n6\r\n7\r\n8\r\n9\r\n.\r\n"
     assert send_recv(socket, "LISTGROUP fun.times\r\n") == valid_response
     assert send_recv(socket, "LISTGROUP\r\n") == valid_response
-    assert send_recv(socket, "LISTGROUP fun.times 5-\r\n") == valid_response
+    assert send_recv(socket, "LISTGROUP fun.times 5-\r\n") == "211 10 0 10 fun.times\r\n5\r\n6\r\n7\r\n8\r\n9\r\n.\r\n"
 
-    assert send_recv(socket, "LISTGROUP fun.times 5-7\r\n") == "211 5 5 10 fun.times\r\n5\r\n6\r\n.\r\n"
+    assert send_recv(socket, "LISTGROUP fun.times 5-7\r\n") == "211 10 0 10 fun.times\r\n5\r\n6\r\n.\r\n"
 
-    assert send_recv(socket, "LISTGROUP fun.times 7-5\r\n") == "211 5 5 10 fun.times\r\n.\r\n"
+    assert send_recv(socket, "LISTGROUP fun.times 7-5\r\n") == "211 10 0 10 fun.times\r\n.\r\n"
 
     quit(socket)
   end
@@ -264,7 +264,7 @@ defmodule Athel.Nntp.ServerTest do
     assert send_recv(socket, "POST\r\n") =~ status(340)
     assert send_recv(socket, Formattable.format(new_article)) =~ status(240)
 
-    {_, created_article} = NntpService.get_article_by_index(group, 3)
+    {_, created_article} = NntpService.get_article_by_index(group.name, 3)
     assert created_article.subject == new_article.subject
     assert created_article.body == new_article.body
 

@@ -50,7 +50,7 @@ defmodule AthelWeb.GroupController do
     article_query = from a in article_source,
       join: a2g in ^(from "articles_to_groups"), on: a2g.message_id == a.message_id,
       where: is_nil(a.parent_message_id),
-      where: a2g.group_id == ^group.id,
+      where: a2g.group_name == ^name,
       order_by: [desc: a.date],
       limit: @articles_per_page,
       offset: ^(page * @articles_per_page),

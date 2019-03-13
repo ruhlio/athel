@@ -2,7 +2,7 @@ defmodule Athel.Repo.Migrations.CreateArticle do
   use Ecto.Migration
 
   def up do
-    execute "create type article_status as enum ('active', 'banned')"
+    execute "CREATE TYPE article_status AS ENUM ('active', 'banned')"
 
     create table(:articles, primary_key: false) do
       add :message_id, :string, primary_key: true, size: 192
@@ -22,7 +22,7 @@ defmodule Athel.Repo.Migrations.CreateArticle do
 
     create table(:articles_to_groups, primary_key: false) do
       add :message_id, references(:articles, column: :message_id, type: :string)
-      add :group_id, references(:groups)
+      add :group_name, references(:groups, column: :name, type: :string)
     end
 
   end
@@ -31,7 +31,7 @@ defmodule Athel.Repo.Migrations.CreateArticle do
     drop table(:articles_to_groups)
     drop index(:articles, :parent_message_id)
     drop table(:articles)
-    execute "drop type article_status"
+    execute "DROP TYPE article_status"
   end
 
 end

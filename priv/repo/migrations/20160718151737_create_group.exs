@@ -4,8 +4,8 @@ defmodule Athel.Repo.Migrations.CreateGroup do
   def up do
     execute "CREATE TYPE group_status AS ENUM ('y', 'n', 'm')"
 
-    create table(:groups) do
-      add :name, :string, size: 128, null: false
+    create table(:groups, primary_key: false) do
+      add :name, :string, size: 128, primary_key: true
       add :description, :string, size: 256, null: false
       add :low_watermark, :integer, null: false
       add :high_watermark, :integer, null: false
@@ -13,8 +13,6 @@ defmodule Athel.Repo.Migrations.CreateGroup do
 
       timestamps()
     end
-
-    create unique_index(:groups, [:name])
   end
 
   def down do

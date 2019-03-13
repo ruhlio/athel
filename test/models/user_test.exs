@@ -8,7 +8,8 @@ defmodule Athel.UserTest do
     attrs = %{username: "he_man",
               email: "me@him.who",
               hashed_password: hash,
-              salt: "WHENWILLIEVER"}
+              salt: "WHENWILLIEVER",
+              status: "active"}
     assert User.changeset(%User{}, attrs).valid?
   end
 

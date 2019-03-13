@@ -134,18 +134,18 @@ defmodule Athel.Nntp.SessionHandler do
         case Regex.run(~r/(\d+)(-(\d+)?)?/, range) do
           [_, index] ->
             {index, _} = Integer.parse(index)
-            group
+            group.name
             |> NntpService.get_article_by_index(index)
             |> responder.(group)
           [_, lower_bound, _unbounded] ->
             {lower_bound, _} = Integer.parse(lower_bound)
-            group
+            group.name
             |> NntpService.get_article_by_index(lower_bound, :infinity)
             |> responder.(group)
           [_, lower_bound, _, upper_bound] ->
             {lower_bound, _} = Integer.parse(lower_bound)
             {upper_bound, _} = Integer.parse(upper_bound)
-            group
+            group.name
             |> NntpService.get_article_by_index(lower_bound, upper_bound)
             |> responder.(group)
           nil ->
@@ -167,7 +167,7 @@ defmodule Athel.Nntp.SessionHandler do
         if group.low_watermark == state.article_index do
           no_previous_article
         else
-          case NntpService.get_article_by_index(group, state.article_index - 1) do
+          case NntpService.get_article_by_index(group.name, state.article_index - 1) do
             nil -> no_previous_article
             {index, article} -> {:continue, {223, "#{index} <#{article.message_id}>"}}
           end
@@ -188,7 +188,7 @@ defmodule Athel.Nntp.SessionHandler do
         if group.high_watermark == state.article_index do
           no_next_article
         else
-          case NntpService.get_article_by_index(group, state.article_index + 1) do
+          case NntpService.get_article_by_index(group.name, state.article_index + 1) do
             nil -> no_next_article
             {index, article} -> {:continue, {223, "#{index} <#{article.message_id}>"}}
           end
@@ -237,8 +237,7 @@ defmodule Athel.Nntp.SessionHandler do
             no_group_selected()
           group_name ->
             {index, _} = if is_number(id), do: {id, nil}, else: Integer.parse(id)
-            group = Repo.get_by(Group, name: group_name)
-            article = NntpService.get_article_by_index(group, index)
+            article = NntpService.get_article_by_index(group_name, index)
 
             cond do
               is_nil(article) && is_number(id) ->
