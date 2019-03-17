@@ -23,7 +23,7 @@ defmodule AthelWeb.AdminController do
       })
 
     if changeset.valid? do
-      group = Repo.insert!(changeset)
+      Repo.insert!(changeset)
       conn
       |> put_flash(:success, "Group created")
       |> redirect(to: "/")

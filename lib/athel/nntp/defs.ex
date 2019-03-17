@@ -54,8 +54,8 @@ defmodule Athel.Nntp.Defs do
   def is_authenticated(%{authentication: %Athel.User{}}), do: true
   def is_authenticated(_), do: false
 
-  def get_username(%{authentication: %Athel.User{username: username}}) do
-    "user #{username}"
+  def get_username(%{authentication: %Athel.User{email: email}}) do
+    "user #{email}"
   end
   def get_username(_), do: "unauthorized client"
 

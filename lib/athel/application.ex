@@ -8,7 +8,8 @@ defmodule Athel.Application do
       supervisor(Athel.Repo, []),
       supervisor(AthelWeb.Endpoint, []),
       supervisor(Athel.Nntp, []),
-      supervisor(Athel.Scraping, [])
+      supervisor(Athel.Scraping, []),
+      worker(Athel.UserCache, [])
     ]
 
     opts = [strategy: :one_for_one, name: Athel.Supervisor]

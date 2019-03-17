@@ -5,8 +5,7 @@ defmodule Athel.UserTest do
 
   test "valid" do
     {:ok, hash} = Multihash.encode(:sha2_512, :crypto.hash(:sha512, "knarly"))
-    attrs = %{username: "he_man",
-              email: "me@him.who",
+    attrs = %{email: "me@him.who",
               hashed_password: hash,
               salt: "WHENWILLIEVER",
               status: "active"}

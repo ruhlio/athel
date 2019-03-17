@@ -1,15 +1,13 @@
 defmodule Athel.AuthService do
   alias Ecto.Changeset
-
   alias Athel.Repo
   alias Athel.User
 
-  @spec create_user(String.t, String.t, String.t) :: {:ok, User.t} | {:error, Changeset.t}
-  def create_user(username, email, password) do
+  @spec create_user(String.t, String.t) :: {:ok, User.t} | {:error, Changeset.t}
+  def create_user(email, password) do
     salt = create_salt()
     changeset = User.changeset(%User{},
-      %{username: username,
-        email: email,
+      %{email: email,
         salt: salt,
         hashed_password: hash_password(password, salt),
         status: "active"})
@@ -17,8 +15,8 @@ defmodule Athel.AuthService do
   end
 
   @spec login(String.t, String.t) :: {:ok, User.t} | :invalid_credentials
-  def login(username, password) do
-    case Repo.get_by(User, username: username) do
+  def login(email, password) do
+    case Repo.get_by(User, email: email) do
       nil -> :invalid_credentials
       user ->
         if hash_password(password, user.salt) == user.hashed_password do
