@@ -28,6 +28,19 @@ defmodule Athel.AuthService do
 
   end
 
+  @spec verify(String.t, String.t, String.t) :: boolean
+  def verify(email, signature, message) do
+    case Athel.UserCache.get(email) do
+      nil -> false
+      user ->
+        case Base.decode16(signature) do
+          {:ok, decoded_signature} ->
+            :public_key.verify(message, :sha512, decoded_signature, user.decoded_public_key)
+          _ -> false
+        end
+    end
+  end
+
   defp update_login(user, password) do
     new_salt = create_salt()
     user = Changeset.change user,
