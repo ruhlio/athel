@@ -49,18 +49,26 @@ defmodule Athel.NntpService do
 
   @spec get_article_by_index(String.t, integer) :: indexed_article | nil
   def get_article_by_index(group_name, index) do
-    base_by_index(group_name, index) |> limit(1) |> Repo.one
+    group_name
+    |> base_by_index(index)
+    |> limit(1)
+    |> Repo.one
   end
 
   @spec get_article_by_index(String.t, integer, :infinity) :: list(indexed_article)
   def get_article_by_index(group_name, lower_bound, :infinity) do
-    base_by_index(group_name, lower_bound) |> Repo.all
+    group_name
+    |> base_by_index(lower_bound)
+    |> Repo.all
   end
 
   @spec get_article_by_index(String.t, integer, integer) :: list(indexed_article)
   def get_article_by_index(group_name, lower_bound, upper_bound) do
     count = max(upper_bound - lower_bound, 0)
-    base_by_index(group_name, lower_bound) |> limit(^count) |> Repo.all
+    group_name
+    |> base_by_index(lower_bound)
+    |> limit(^count)
+    |> Repo.all
   end
 
   defp base_by_index(group_name, lower_bound) do
@@ -190,8 +198,8 @@ defmodule Athel.NntpService do
           end)
 
         attachments = hashed_attachments |> Enum.map(fn {hash, attachment} ->
-          existing_attachment = (from a in Attachment,
-            where: a.hash == ^hash) |> first |> changeset.repo.one
+          existing_attachment = changeset.repo.one(from a in Attachment,
+            where: a.hash == ^hash)
           if is_nil(existing_attachment) do
             Attachment.changeset(%Attachment{}, attachment)
           else

@@ -1,8 +1,10 @@
 defmodule Athel.User do
   use Ecto.Schema
-
   import Ecto.Changeset
 
+  @type t :: %__MODULE__{}
+
+  @derive {Inspect, except: [:hashed_password, :salt]}
   @primary_key {:email, :string, autogenerate: false}
   schema "users" do
     field :hashed_password, :binary

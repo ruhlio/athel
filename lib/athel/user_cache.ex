@@ -25,12 +25,13 @@ defmodule Athel.UserCache do
 
   @impl true
   def handle_continue(:load_users, _state) do
-    users = Athel.User
-    |> Athel.Repo.all()
-    |> Enum.reduce(%{}, fn user, acc ->
-      loaded_user = %{user | decoded_public_key: load_key(user.public_key)}
-      Map.put(acc, user.email, loaded_user)
-    end)
+    users = %{}
+      # Athel.User
+    # |> Athel.Repo.all()
+    # |> Enum.reduce(%{}, fn user, acc ->
+    #   loaded_user = %{user | decoded_public_key: load_key(user.public_key)}
+    #   Map.put(acc, user.email, loaded_user)
+    # end)
 
     {:noreply, users}
   end

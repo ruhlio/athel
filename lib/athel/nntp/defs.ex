@@ -35,14 +35,15 @@ defmodule Athel.Nntp.Defs do
         end
     end
 
-    clauses = if auth[:required] do
+    clauses = List.flatten(if auth[:required] do
       [max_args_clause, auth_clause, action_clause]
     else
       [max_args_clause, action_clause]
-    end |> List.flatten
+    end)
 
     quote do
       def handle_call({unquote(name), args}, _sender, state) do
+        # credo:disable-for-next-line Credo.Check.Refactor.CondStatements
         cond do
           unquote(clauses)
         end

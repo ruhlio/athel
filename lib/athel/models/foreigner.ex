@@ -2,6 +2,8 @@ defmodule Athel.Foreigner do
   use Ecto.Schema
   import Ecto.Changeset
 
+  @type t :: %__MODULE__{}
+
   @derive {Inspect, except: [:password]}
   schema "foreigners" do
     field :hostname, :string

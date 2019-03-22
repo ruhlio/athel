@@ -1,4 +1,5 @@
 defmodule Athel.NntpServiceTest do
+  #
   use Athel.ModelCase
 
   import Athel.NntpService
@@ -60,7 +61,7 @@ defmodule Athel.NntpServiceTest do
     article = Repo.get!(Article, "02@test.com")
     changeset = change(article, status: "banned")
     Repo.update!(changeset)
-    assert get_article_by_index(group.name, 0, :infinity) |> message_ids == [
+    assert group.name |>  get_article_by_index(0, :infinity) |> message_ids == [
       {0, "00@test.com"},
       {1, "01@test.com"},
       {3, "03@test.com"},
@@ -89,7 +90,7 @@ defmodule Athel.NntpServiceTest do
     body = ["All I see are these colors", "we walk with distant lovers", "but really what is it all to me"]
     {:ok, posted_article} = post_article(headers, body)
 
-    article = Repo.get(Article, posted_article.message_id) |> Repo.preload(:groups)
+    article = Article |> Repo.get(posted_article.message_id) |> Repo.preload(:groups)
     assert article.message_id =~ ~r/example.com$/
     assert article.from == headers["FROM"]
     assert article.subject == headers["SUBJECT"]
@@ -285,7 +286,8 @@ defmodule Athel.NntpServiceTest do
           high_watermark: 0,
           status: "y",
           inserted_at: ~N[2012-03-04 05:55:55]})
-    assert get_groups_created_after(~N[2010-04-05 22:22:22])
+    assert ~N[2010-04-05 22:22:22]
+    |> get_groups_created_after()
     |> Enum.map(&(&1.name)) == ["young.whippersnapper"]
   end
 
@@ -297,13 +299,14 @@ defmodule Athel.NntpServiceTest do
       %{message_id: "cherry@burger.pies", date: ~N[2012-03-04 05:55:55]}
     ]
     for article <- articles do
-      changeset = Article.changeset(%Article{}, Map.merge(article,
-        %{from: "whoever",
-          subject: "whatever",
-          body: ["however"],
-          content_type: "text/plain",
-          headers: %{},
-          status: "active"}))
+      changeset = %Article{}
+      |> Article.changeset(Map.merge(article,
+          %{from: "whoever",
+            subject: "whatever",
+            body: ["however"],
+            content_type: "text/plain",
+            headers: %{},
+            status: "active"}))
       |> put_assoc(:groups, [group])
       Repo.insert!(changeset)
     end

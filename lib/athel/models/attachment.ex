@@ -1,9 +1,10 @@
 defmodule Athel.Attachment do
   use Ecto.Schema
-
   import Ecto.Changeset
   alias Ecto.Changeset
   alias Athel.Article
+
+  @type t :: %__MODULE__{}
 
   schema "attachments" do
     field :filename, :string

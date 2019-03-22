@@ -1,4 +1,5 @@
 defmodule Athel.Nntp.ParserTest do
+  # credo:disable-for-this-file Credo.Check.Consistency.TabsOrSpaces
   use ExUnit.Case, async: true
 
   import Athel.Nntp.Parser

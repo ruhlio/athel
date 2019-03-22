@@ -39,7 +39,9 @@ defmodule Athel.Scraper do
     |> Enum.map(fn line -> line |> String.split |> List.first end)
     |> MapSet.new()
 
-    MapSet.intersection(local_groups, foreign_groups) |> MapSet.to_list()
+    local_groups
+    |> MapSet.intersection(foreign_groups)
+    |> MapSet.to_list()
   end
 
   defp find_message_id_index(session) do
@@ -71,10 +73,10 @@ defmodule Athel.Scraper do
 
     ids = extract_ids(overviews, message_id_index)
     id_set = MapSet.new(ids)
-    existing_ids = Repo.all(
+    existing_ids = MapSet.new Repo.all(
       from article in Article,
-      select: article.message_id) |> MapSet.new
-    new_ids = MapSet.difference(id_set, existing_ids) |> MapSet.to_list()
+      select: article.message_id)
+    new_ids = id_set |> MapSet.difference(existing_ids) |> MapSet.to_list()
     Logger.info "Found #{length new_ids} new messages for group #{group}"
     fetch_ids(new_ids, session, group, foreigner)
   end

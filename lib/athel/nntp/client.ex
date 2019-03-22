@@ -51,7 +51,7 @@ defmodule Athel.Nntp.Client do
     format_error(res)
   end
 
-  @spec get_article(:inet.socket, String.t) :: {:ok, {Map.t, list(String.t)}} | {:error, String.t}
+  @spec get_article(:inet.socket, String.t) :: {:ok, {map(), list(String.t)}} | {:error, String.t}
   def get_article(socket, id) do
     res =
       with :ok <- :gen_tcp.send(socket, "ARTICLE <#{id}>\r\n"),

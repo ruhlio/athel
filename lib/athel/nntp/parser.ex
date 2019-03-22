@@ -220,6 +220,7 @@ defmodule Athel.Nntp.Parser do
     "#{prev} #{next}"
   end
 
+  @spec handle_incomplete_params_parse(map(), String.t, map(), iodata) :: no_return
   defp handle_incomplete_params_parse(state, header_value, params, param_name_acc) do
     new_headers = Map.put(state.headers, state.header_name, %{value: header_value, params: params})
     need_more(%{state | headers: new_headers, param_name_acc: param_name_acc})

@@ -74,8 +74,8 @@ defmodule AthelWeb.GroupControllerTest do
 
   test "search", %{conn: conn} do
     Athel.ModelCase.setup_models(5)
-    from(a in Athel.Article, where: a.message_id == "01@test.com")
-    |> Repo.update_all(set: [subject: "Asphalt"])
+    Repo.update_all from(a in Athel.Article, where: a.message_id == "01@test.com"),
+      set: [subject: "Asphalt"]
     Athel.ArticleSearchIndex.update_view()
 
     request = get conn, "/groups/fun.times?query=asphalt"
@@ -90,10 +90,10 @@ defmodule AthelWeb.GroupControllerTest do
 
   test "doesn't show child articles", %{conn: conn} do
     Athel.ModelCase.setup_models(5)
-    from(a in Athel.Article, where: a.message_id == "01@test.com" or a.message_id == "02@test.com")
-    |> Repo.update_all(set: [subject: "Asphalt"])
-    from(a in Athel.Article, where: a.message_id == "02@test.com")
-    |> Repo.update_all(set: [parent_message_id: "01@test.com"])
+    Repo.update_all from(a in Athel.Article, where: a.message_id == "01@test.com" or a.message_id == "02@test.com"),
+      set: [subject: "Asphalt"]
+    Repo.update_all from(a in Athel.Article, where: a.message_id == "02@test.com"),
+      set: [parent_message_id: "01@test.com"]
     Athel.ArticleSearchIndex.update_view()
 
     request = get conn, "/groups/fun.times"

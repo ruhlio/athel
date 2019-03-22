@@ -6,7 +6,7 @@ defmodule Athel.Nntp.ServerTest do
   alias Athel.Nntp.Formattable
 
   setup do
-    {:ok, _} = AuthService.create_user("jimbo", "bigboy@pig.farm", "password")
+    {:ok, _} = AuthService.create_user("bigboy@pig.farm", "password")
 
     socket = connect()
     {:ok, _welcome} = :gen_tcp.recv(socket, 0)
@@ -384,7 +384,8 @@ defmodule Athel.Nntp.ServerTest do
 
   test "article streaming", %{socket: socket} do
     setup_models(1)
-    article = Repo.get!(Article, "00@test.com")
+    article = Article
+    |> Repo.get!("00@test.com")
     |> Repo.preload(:groups)
     |> Repo.preload(:attachments)
 
@@ -421,7 +422,7 @@ defmodule Athel.Nntp.ServerTest do
   end
 
   defp login(socket) do
-    assert send_recv(socket, "AUTHINFO USER jimbo\r\n") =~ status(381)
+    assert send_recv(socket, "AUTHINFO USER bigboy@pig.farm\r\n") =~ status(381)
     assert send_recv(socket, "AUTHINFO PASS password\r\n") =~ status(281)
   end
 

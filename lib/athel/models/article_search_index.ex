@@ -1,6 +1,8 @@
 defmodule Athel.ArticleSearchIndex do
   use Ecto.Schema
 
+  @type t :: %__MODULE__{}
+
   @primary_key {:message_id, :string, autogenerate: false}
   schema "article_search_index" do
     field :from, :string

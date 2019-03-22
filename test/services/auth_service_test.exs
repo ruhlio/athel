@@ -15,7 +15,7 @@ defmodule Athel.AuthServiceTest do
 
   test "login", %{user: user} do
     {:ok, logged_in_user} = AuthService.login("jimbo@thrilling.chilling", "cherrypie")
-    assert user.username == logged_in_user.username
+    assert user.email == logged_in_user.email
     refute user.salt == logged_in_user.salt
 
     assert AuthService.login("jimbo@thrilling.chilling", "HARDBODIES") == :invalid_credentials

@@ -41,9 +41,12 @@ defmodule Athel.Mixfile do
       {:timex, "~> 3.4"},
       {:cloak, "~> 0.9.0"},
       {:ex_multihash, github: "ruhlio/ex_multihash"},
-      {:credo, "~> 1.0.0", only: [:dev, :test], runtime: false},
       {:codepagex, "~> 0.1.4"},
-      {:distillery, "~> 2.0.0"}
+      {:distillery, "~> 2.0.0"},
+
+      # dev
+      {:credo, "~> 1.0.0", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.0.0-rc.4", only: [:dev], runtime: false}
     ]
   end
 

@@ -12,13 +12,6 @@ defmodule Athel.UserTest do
     assert User.changeset(%User{}, attrs).valid?
   end
 
-  test "username" do
-    assert_invalid_format(%User{}, :username,
-      ["as",
-       "they go",
-       "SPLELUNKADUNKINGWHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAT"])
-  end
-
   test "email" do
     assert_invalid_format(%User{}, :email,
       ["asd@sdf.p",

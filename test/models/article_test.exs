@@ -16,7 +16,8 @@ defmodule Athel.ArticleTest do
 
   test "changeset with valid attributes" do
     group = setup_models()
-    changeset = Article.changeset(%Article{}, @valid_attrs)
+    changeset = %Article{}
+    |> Article.changeset(@valid_attrs)
     |> put_assoc(:groups, [group])
     assert changeset.valid?
   end
@@ -38,7 +39,8 @@ defmodule Athel.ArticleTest do
   test "message id uniqueness" do
     group = setup_models()
 
-    changeset = Article.changeset(%Article{}, @valid_attrs)
+    changeset = %Article{}
+    |> Article.changeset(@valid_attrs)
     |> put_assoc(:groups, [group])
     Repo.insert!(changeset)
 
@@ -51,7 +53,8 @@ defmodule Athel.ArticleTest do
     Repo.insert! changeset
 
     parent = Repo.one!(from a in Article, limit: 1)
-    changeset = Article.changeset(%Article{}, %{@valid_attrs | message_id: "fuggg@fin"})
+    changeset = %Article{}
+    |> Article.changeset(%{@valid_attrs | message_id: "fuggg@fin"})
     |> put_assoc(:parent, parent)
     Repo.insert! changeset
   end
@@ -68,7 +71,7 @@ defmodule Athel.ArticleTest do
 
   test "dedicated header field values overwrite values from %Article{:headers}" do
     changeset = Article.changeset(%Article{}, @valid_attrs)
-    article = Repo.insert!(changeset) |> Repo.preload(:groups) |> Repo.preload(:attachments)
+    article = changeset |> Repo.insert!() |> Repo.preload(:groups) |> Repo.preload(:attachments)
     {headers, _} = Article.get_headers(article)
     assert headers["CONTENT-TYPE"] == "text/xml"
   end

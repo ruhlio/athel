@@ -1,7 +1,8 @@
 defmodule Athel.Group do
   use Ecto.Schema
-
   import Ecto.Changeset
+
+  @type t :: %__MODULE__{}
 
   @primary_key {:name, :string, autogenerate: false}
   schema "groups" do

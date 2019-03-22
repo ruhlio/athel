@@ -1,8 +1,9 @@
 defmodule Athel.Article do
   use Ecto.Schema
-
   import Ecto.Changeset
   alias Athel.{Group, Attachment}
+
+  @type t :: %__MODULE__{}
 
   @primary_key {:message_id, :string, autogenerate: false}
   schema "articles" do
@@ -159,28 +160,22 @@ defmodule Athel.Article do
     end
   end
 
-  defp format_message_id(message_id) when is_nil(message_id) do
-    nil
-  end
+  defp format_message_id(message_id) when is_nil(message_id), do: nil
+  defp format_message_id(message_id), do: "<#{message_id}>"
 
-  defp format_message_id(message_id) do
-    "<#{message_id}>"
-  end
-
-  defp format_date(date) when is_nil(date) do
-    nil
-  end
-
+  defp format_date(date) when is_nil(date), do: nil
   defp format_date(date) do
     Timex.format!(date, Athel.Article.date_format, :strftime)
   end
 
   defp format_article_groups([]), do: ""
   defp format_article_groups(groups) do
-    Enum.reduce(groups, :first, fn
+    groups
+    |> Enum.reduce(:first, fn
       group, :first -> [group.name]
       group, acc -> [acc, ?,, group.name]
-    end) |> IO.iodata_to_binary
+    end)
+    |> IO.iodata_to_binary
   end
 
 end
