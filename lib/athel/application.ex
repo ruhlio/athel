@@ -7,8 +7,9 @@ defmodule Athel.Application do
     children = [
       supervisor(Athel.Repo, []),
       supervisor(AthelWeb.Endpoint, []),
-      supervisor(Athel.Nntp, []),
-      supervisor(Athel.Scraping, []),
+      supervisor(Athel.Nntp.Supervisor, []),
+      supervisor(Athel.Event.Supervisor, []),
+      supervisor(Athel.ScraperSupervisor, []),
       worker(Athel.UserCache, [])
     ]
 

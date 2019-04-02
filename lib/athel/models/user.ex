@@ -2,6 +2,8 @@ defmodule Athel.User do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias Athel.Role
+
   @type t :: %__MODULE__{}
 
   @derive {Inspect, except: [:hashed_password, :salt]}
@@ -15,6 +17,8 @@ defmodule Athel.User do
     field :decoded_public_key, :binary, virtual: true
 
     timestamps()
+
+    has_many :roles, Role
   end
 
   def changeset(struct, params \\ %{}) do

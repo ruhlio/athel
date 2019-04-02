@@ -1,9 +1,9 @@
-defmodule Athel.Scraping do
+defmodule Athel.ScraperSupervisor do
   use Supervisor
 
   import Supervisor.Spec
 
-  def start_link do
+  def start_link() do
     Supervisor.start_link(__MODULE__, :ok, name: __MODULE__)
   end
 

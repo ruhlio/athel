@@ -4,6 +4,7 @@ defmodule Athel.NntpService do
   import Ecto.Query
   alias Ecto.{Changeset, UUID}
   alias Athel.{Repo, Group, Article, Attachment, Multipart}
+  alias Athel.Event.NntpBroadcaster
 
   @type changeset_params :: %{optional(binary) => term} | %{optional(atom) => term}
   @type headers :: %{optional(String.t) => String.t}
@@ -134,7 +135,9 @@ defmodule Athel.NntpService do
       |> Changeset.prepare_changes(set_parent(headers, allow_orphan))
       |> Changeset.prepare_changes(set_attachments(attachments))
 
-      Repo.insert(changeset)
+      result = Repo.insert(changeset)
+      with {:ok, article} <- result, do: NntpBroadcaster.new_article(article)
+      result
     end
   end
 
@@ -162,7 +165,14 @@ defmodule Athel.NntpService do
   end
 
   defp set_parent(headers, allow_orphan) do
-    parent_message_id = extract_message_id(headers["REFERENCES"])
+    parent_message_id =
+      case headers["REFERENCES"] do
+        nil -> nil
+        references -> references
+        |> String.split(" ")
+        |> List.last
+        |> extract_message_id
+      end
 
     fn changeset ->
       if allow_orphan do

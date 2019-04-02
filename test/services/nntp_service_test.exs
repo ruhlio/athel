@@ -99,6 +99,21 @@ defmodule Athel.NntpServiceTest do
     assert (article.groups |> Enum.map(&(&1.name))) == [group.name]
   end
 
+  test "post with references list" do
+    group = setup_models(5)
+
+    headers = %{
+      "FROM" => "geriatrics",
+      "SUBJECT" => "Water Polo",
+      "CONTENT-TYPE" => "text/plain",
+      "NEWSGROUPS" => group.name,
+      "REFERENCES" => "<01@test.com> <02@test.com> <03@test.com>"
+    }
+    body = ["Too cheap for a horse"]
+    {:ok, posted_article} = post_article(headers, body)
+    assert posted_article.parent_message_id == "03@test.com"
+  end
+
   test "post with non-UTF-8 body encoding" do
     setup_models()
 

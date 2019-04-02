@@ -265,7 +265,10 @@ defmodule Athel.Nntp.Parser do
   end
 
   defp terminate_header_value(acc) do
-    acc |> IO.iodata_to_binary |> String.trim
+    acc
+    |> IO.iodata_to_binary
+    |> Codepagex.to_string!(:ascii, Codepagex.use_utf_replacement())
+    |> String.trim
   end
 
   # termination

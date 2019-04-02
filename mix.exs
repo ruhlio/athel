@@ -27,9 +27,8 @@ defmodule Athel.Mixfile do
 
   defp deps do
     [
-      # added by phoenix
+      {:gen_stage, "~> 0.14"},
       {:phoenix, "~> 1.4.0"},
-      {:phoenix_pubsub, "~> 1.1"},
       {:phoenix_ecto, "~> 4.0.0"},
       {:postgrex, ">= 0.0.0"},
       {:ecto_sql, "~> 3.0"},

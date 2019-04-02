@@ -182,6 +182,14 @@ Original-Received: from hawk.netfonds.no ([80.91.224.246])\r
   #                                           "LESS" => "chess"}}}
   # end
 
+  test "header values with invalid characters" do
+    {:ok, headers, _} = "test/nntp/scandavian_org.txt"
+    |> File.stream!()
+    |> Enum.to_list()
+    |> parse_headers()
+    assert headers["ORGANIZATION"] == "Erzs�bet the Vampire"
+  end
+
   test "unterminated header entry parameters" do
     {:need_more, _} = parse_headers("Content-Type: attachment; boundary")
     {:need_more, _} = parse_headers("Content-Type: attachment; boundary=nope;")

@@ -1,4 +1,4 @@
-defmodule Athel.Nntp do
+defmodule Athel.Nntp.Supervisor do
   use Supervisor
 
   @type opts :: [port: non_neg_integer,
@@ -13,7 +13,7 @@ defmodule Athel.Nntp do
   end
 
   def init(:ok) do
-    config = Application.fetch_env!(:athel, __MODULE__)
+    config = Application.fetch_env!(:athel, Athel.Nntp)
 
     children = [
       # :ranch_sup already started by phoenix/cowboy
